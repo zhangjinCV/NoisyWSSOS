@@ -1,0 +1,87 @@
+seed: 2024
+
+dataset:
+  train:
+    type: 'COSwithBox'
+    image_root: '/mnt/jixie16t/zj/zj/works_in_phd/ECCV2024/github_release/NoisyCOD/data/LabelNoiseTrainDataset/CAMO_COD_train_1%/image/'
+    gt_root: '/mnt/jixie16t/zj/zj/works_in_phd/ECCV2024/github_release/NoisyCOD/data/LabelNoiseTrainDataset/CAMO_COD_train_1%/mask/'
+    trainsize: 384
+    istraining: true
+  val:
+    type: 'COSwithBox'
+    image_root: '/mnt/jixie16t/zj/zj/works_in_phd/ECCV2024/github_release/NoisyCOD/data/LabelNoiseTrainDataset/CAMO_COD_generate_99%/image/'
+    gt_root: '/mnt/jixie16t/zj/zj/works_in_phd/ECCV2024/github_release/NoisyCOD/data/LabelNoiseTrainDataset/CAMO_COD_generate_99%/mask/'
+    trainsize: 384
+    istraining: false
+
+dataloader:
+  batch_size: 16
+  num_workers: 6
+  batch_size_val: 64
+  shuffle: true
+
+optimizer:
+  type: 'Adam'
+  params:
+    lr: 0.0001
+    betas: [0.9, 0.999]
+    eps: 0.00000001
+    weight_decay: 0
+
+scheduler:
+  type: 'CosineAnnealingLR'
+  params:
+    T_max: 200
+    eta_min: 0.0000001
+
+model:
+  name: 'ANet'
+
+training:
+  epochs: 200
+  q_epoch: 20
+  load: null
+  gpu_id: '0'
+  best_mae: 1.0
+  best_epoch: 1
+  val_step: 10
+  MASTER_ADDR: 'localhost'
+  MASTER_PORT: '12355'
+  save_path: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/ANet/1%/'
+  losses:
+    loss1:
+      type: ['StructureLoss']
+      gt_input: ["gt"]
+      coef: [2]
+    loss2:
+      type: ['StructureLoss']
+      gt_input: ["gt"]
+      coef: [0.125]
+    loss3:
+      type: ['StructureLoss']
+      gt_input: ["gt"]
+      coef: [0.25]
+    loss4:
+      type: ['StructureLoss']
+      gt_input: ["gt"]
+      coef: [0.5]
+    loss5:
+      type: ['StructureLoss']
+      gt_input: ["gt"]
+      coef: [1]
+    loss6:
+      type: ['DiceLoss']
+      gt_input: ["edge"]
+      coef: [0]
+    loss7:
+      type: ['DiceLoss']
+      gt_input: ["edge"]
+      coef: [0.5]
+    loss8:
+      type: ['DiceLoss']
+      gt_input: ["edge"]
+      coef: [1]
+    loss9:
+      type: ['DiceLoss']
+      gt_input: ["edge"]
+      coef: [2]
