@@ -39,6 +39,29 @@ class LinearCosineAnnealingLR(_LRScheduler):
             return cosine_lr
 
 
+def save_checkpoint(model, optimizer, scheduler, epoch, path, opt):
+    save_iter = opt['save_iter']
+    if epoch % save_iter == 0:
+        save_path = os.path.join(path, 'epoch_{}.pth'.format(epoch))
+        checkpoint = {
+            'epoch': epoch,
+            'model': model.state_dict(),
+            'optimizer_state_dict': optimizer.state_dict(),
+            'scheduler_state_dict': scheduler.state_dict(),
+        }
+        torch.save(checkpoint, save_path)
+        print('Checkpoint saved at {}'.format(save_path))
+    
+    checkpoints = [f for f in os.listdir(path) if f.endswith('.pth')]
+    checkpoints = [f for f in checkpoints if 'epoch' in f]
+    nums_save_pth = len(checkpoints)
+    max_save_num = opt['max_save_num']
+    if nums_save_pth > max_save_num:
+        checkpoints.sort(key=lambda x: int(x.split('_')[1].split('.')[0]))
+        for checkpoint in checkpoints[:nums_save_pth - max_save_num]:
+            os.remove(os.path.join(path, checkpoint))
+            print('Checkpoint removed at {}'.format(os.path.join(path, checkpoint)))
+
 def save_weight(model, epoch, path, opt):
     save_iter = opt['save_iter']
     if epoch % save_iter == 0:
@@ -46,11 +69,15 @@ def save_weight(model, epoch, path, opt):
         torch.save(model.state_dict(), save_path)
         print('Model saved at {}'.format(save_path))
     
-    nums_save_pth = len(os.listdir(path))
+    pths = os.listdir(path)
+    pths = [i for i in pths if '.pth' in i]
+    nums_save_pth = [i for i in pths if 'epoch' in i]
     max_save_num = opt['max_save_num']
+
     if nums_save_pth > max_save_num:
         pths = os.listdir(path)
         pths = [i for i in pths if '.pth' in i]
+        pths = [i for i in pths if 'epoch' in i]
         pths = [int(pth.split('_')[1].split('.')[0]) for pth in pths]
         pths.sort()
         for pth in pths[:nums_save_pth-max_save_num]:

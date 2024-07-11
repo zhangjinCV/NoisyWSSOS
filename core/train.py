@@ -13,7 +13,7 @@ from torch.optim import *
 from tensorboardX import SummaryWriter
 import logging
 from utils import seed_torch, denormalize, convert_bn_to_syncbn, setup_process_groups, LinearCosineAnnealingLR
-from utils import save_weight
+from utils import save_weight, save_checkpoint
 from torch import optim
 import tqdm
 from torchvision.utils import make_grid
@@ -104,23 +104,24 @@ def train(rank, world_size, opt):
     torch.cuda.set_device(rank)
     device = torch.device(f'cuda:{rank}')
 
-    # process_groups = setup_process_groups()
-    # process_group = process_groups[0 if rank <= 3 else 1]
-
     model = build_model(opt)
-    # model = convert_bn_to_syncbn(model, process_group)
     model.to(device)
     model = DDP(model, device_ids=[rank], find_unused_parameters=True)
-
-    if opt['training']['load'] is not None:
-        model.load_state_dict(torch.load(opt['training']['load']))
-        print(f'Loaded model from {opt["training"]["load"]}')
 
     optimizer = build_optimizer(opt, model)
     scheduler = build_scheduler(opt, optimizer)
     train_loader = build_dataloader(opt, 'train', world_size, rank)
     val_loader = build_dataloader(opt, 'val')
-    
+
+    start_epoch = 1
+    if opt['training']['load'] is not None and os.path.exists(opt['training']['load']):
+        checkpoint = torch.load(opt['training']['load'], map_location=device)
+        model.load_state_dict(checkpoint['model'])
+        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
+        start_epoch = checkpoint['epoch'] + 1
+        print(f'Loaded checkpoint from {opt["training"]["load"]}, resuming training from epoch {start_epoch}')
+
     loss_fns = []
     coefs = []
     gt_inputs = []
@@ -153,7 +154,7 @@ def train(rank, world_size, opt):
 
     scaler = GradScaler()
 
-    for epoch in range(1, opt['training']['epochs'] + 1):
+    for epoch in range(start_epoch, opt['training']['epochs'] + 1):
         train_loader.sampler.set_epoch(epoch)
 
         model.train()
@@ -202,9 +203,9 @@ def train(rank, world_size, opt):
         if rank == 0:
             logging.info(f'[Train Info]: Epoch [{epoch:03d}/{opt["training"]["epochs"]:03d}], Loss_AVG: {loss_all:.4f}')
             writer.add_scalar('Loss-epoch', loss_all, global_step=epoch)
-            if epoch > opt['training']['epochs'] / 20 * 19:
-                torch.save(model.state_dict(), save_path + f'Net_epoch_{epoch}.pth')
-        save_weight(model, epoch, save_path, opt)
+        
+        save_checkpoint(model, optimizer, scheduler, epoch, save_path, opt)
+
         if rank == 0 and (epoch % opt['training']['val_step'] == 0):
             val(val_loader, model, epoch, save_path, writer, opt)
 

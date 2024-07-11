@@ -5,7 +5,6 @@ from .ConvNeXt import convnext_base, convnext_large, convnext_small
 from .losses import NCLoss, DiceLoss, StructureLoss, UALoss
 
 
-
 class PANet(nn.Module):
     def __init__(self, channels=64):
         super(PANet, self).__init__()

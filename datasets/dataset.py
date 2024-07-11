@@ -27,25 +27,22 @@ def load_config(config_path):
 
 # 构建数据增强管道
 aug = A.Compose([
-    A.ColorJitter(0.6, 0.6, 0.6, 0.6),
+    A.ColorJitter(0.5, 0.5, 0.5, 0.5),
     A.HorizontalFlip(p=0.5),
     A.VerticalFlip(p=0.5),
     A.Flip(p=0.5),
     A.GaussNoise(p=0.5),
-    A.Blur(p=0.5),
+    A.Blur(p=0.2),
     A.ShiftScaleRotate(rotate_limit=30),
-    A.RGBShift(p=0.5),
-    A.CLAHE(p=0.5),
-    A.ChannelShuffle(p=0.5),
-    A.ISONoise(p=0.5),
+    A.RGBShift(p=0.2),
     A.Superpixels(p=0.2),
     A.ToGray(p=0.2),
     A.CoarseDropout(),
     A.RandomGridShuffle(p=0.2),
-    A.Emboss(p=0.5),
-    A.Posterize(p=0.5),
-    A.ToSepia(p=0.5),
-    A.Perspective(p=0.5)
+    A.Emboss(p=0.2),
+    A.Posterize(p=0.2),
+    A.ToSepia(p=0.2),
+    A.Perspective(p=0.2)
 ], additional_targets={'image2': 'image', 'mask': 'mask', 'edge': 'mask'})
 
 

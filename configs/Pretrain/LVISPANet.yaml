@@ -1,22 +1,24 @@
 seed: 2024
+save_iter: 1
+max_save_num: 5
 
 dataset:
   train:
     type: 'COSwithBox'
     image_root: '/mnt/jixie16t/dataset/LVIS/image/'
     gt_root: '/mnt/jixie16t/dataset/LVIS/mask/'
-    trainsize: 256
+    trainsize: 320
     istraining: true
   val:
     type: 'COSwithBox'
-    image_root: '/mnt/jixie16t/zj/zj/works_in_phd/ECCV2024/github_release/NoisyCOD/data/LabelNoiseTrainDataset/CAMO_COD_generate_80%/image/'
-    gt_root: '/mnt/jixie16t/zj/zj/works_in_phd/ECCV2024/github_release/NoisyCOD/data/LabelNoiseTrainDataset/CAMO_COD_generate_80%/mask/'
-    trainsize: 256
+    image_root: '/mnt/jixie16t/dataset/COD/LabelNoiseTrainDataset/CAMO_COD_generate_80%/image/'
+    gt_root: '/mnt/jixie16t/dataset/COD/LabelNoiseTrainDataset/CAMO_COD_generate_80%/mask/'
+    trainsize: 320
     istraining: false
 
 dataloader:
-  batch_size: 96
-  num_workers: 2
+  batch_size: 64
+  num_workers: 6
   batch_size_val: 64
   shuffle: true
 
@@ -34,7 +36,7 @@ scheduler:
   params:
     max_lr: 0.00048
     min_lr: 0.00000048
-    warmup_epochs: 20
+    warmup_epochs: 0
     total_epochs: 200
 
 model:
