@@ -1,31 +1,31 @@
 seed: 2024
-save_iter: 10
-max_save_num: 5
+save_iter: 1
+max_save_num: 3
 
 dataset:
   train:
     type: 'COSwithBox'
-    image_root: '/mnt/jixie16t/zj/zj/works_in_phd/ECCV2024/github_release/NoisyCOD/data/LabelNoiseTrainDataset/CAMO_COD_train_20%/image/'
-    gt_root: '/mnt/jixie16t/zj/zj/works_in_phd/ECCV2024/github_release/NoisyCOD/data/LabelNoiseTrainDataset/CAMO_COD_train_20%/mask/'
+    image_root: '/mnt/jixie16t/dataset/COD/LabelNoiseTrainDataset/CAMO_COD_train_20%/image/'
+    gt_root: '/mnt/jixie16t/dataset/COD/LabelNoiseTrainDataset/CAMO_COD_train_20%/mask/'
     trainsize: 384
     istraining: true
   val:
     type: 'COSwithBox'
-    image_root: '/mnt/jixie16t/zj/zj/works_in_phd/ECCV2024/github_release/NoisyCOD/data/LabelNoiseTrainDataset/CAMO_COD_generate_80%/image/'
-    gt_root: '/mnt/jixie16t/zj/zj/works_in_phd/ECCV2024/github_release/NoisyCOD/data/LabelNoiseTrainDataset/CAMO_COD_generate_80%/mask/'
+    image_root: '/mnt/jixie16t/dataset/COD/LabelNoiseTrainDataset/CAMO_COD_generate_80%/image/'
+    gt_root: '/mnt/jixie16t/dataset/COD/LabelNoiseTrainDataset/CAMO_COD_generate_80%/mask/'
     trainsize: 384
     istraining: false
 
 dataloader:
   batch_size: 16
-  num_workers: 4
+  num_workers: 6
   batch_size_val: 64
   shuffle: true
 
 optimizer:
   type: 'AdamW'
   params:
-    lr: 0.0004
+    lr: 0.0001
     betas: [0.9, 0.999]
     eps: 0.00000001
     weight_decay: 0.01
@@ -34,8 +34,8 @@ optimizer:
 scheduler:
   type: 'LinearCosineAnnealingLR'
   params:
-    max_lr: 0.0004
-    min_lr: 0.0000004
+    max_lr: 0.0001
+    min_lr: 0.0000001
     warmup_epochs: 20
     total_epochs: 200
 
@@ -46,6 +46,7 @@ training:
   epochs: 200
   q_epoch: 20
   load: null
+  pretrain: /mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/PANet/LVIS/epoch_158.pth
   gpu_id: '0,1,2,3'
   best_mae: 1.0
   best_epoch: 1

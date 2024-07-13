@@ -122,6 +122,11 @@ def train(rank, world_size, opt):
         start_epoch = checkpoint['epoch'] + 1
         print(f'Loaded checkpoint from {opt["training"]["load"]}, resuming training from epoch {start_epoch}')
 
+    if opt['training']['pretrain'] is not None and os.path.exists(opt['training']['pretrain']):
+        pretrin_weight = torch.load(opt['training']['pretrain'], map_location=device)
+        model.load_state_dict(pretrin_weight['model'])
+        print(f'Loaded pretrain model from {opt["training"]["pretrain"]}')
+
     loss_fns = []
     coefs = []
     gt_inputs = []
@@ -203,8 +208,8 @@ def train(rank, world_size, opt):
         if rank == 0:
             logging.info(f'[Train Info]: Epoch [{epoch:03d}/{opt["training"]["epochs"]:03d}], Loss_AVG: {loss_all:.4f}')
             writer.add_scalar('Loss-epoch', loss_all, global_step=epoch)
-        
-        save_checkpoint(model, optimizer, scheduler, epoch, save_path, opt)
+        if rank == 0:
+            save_checkpoint(model, optimizer, scheduler, epoch, save_path, opt)
 
         if rank == 0 and (epoch % opt['training']['val_step'] == 0):
             val(val_loader, model, epoch, save_path, writer, opt)

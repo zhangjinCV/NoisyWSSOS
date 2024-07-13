@@ -14,8 +14,8 @@ class PANet(nn.Module):
         self.fusion2 = MCG(channels, channels)
         self.fusion3 = MCG(channels, channels)
         self.fusion4 = MCG(channels, channels)
-        self.fusion5 = MCG(768, 768)
-        self.GPM = GPM(768)
+        self.fusion5 = MCG(1024, 1024)
+        self.GPM = GPM(1024)
         self.decoder = UNetDecoderWithEdges(channels, channels)
         self.nc_loss = NCLoss()
         self.dice_loss = DiceLoss()
@@ -148,9 +148,9 @@ class MCG(nn.Module):
 class Branch(nn.Module):
     def __init__(self, channels=64):
         super(Branch, self).__init__()
-        self.shared_encoder = convnext_small()
+        self.shared_encoder = convnext_base()
 
-        self.GCM3 = GCM3([96, 192, 384, 768], channels)
+        self.GCM3 = GCM3([128, 256, 512, 1024], channels)
 
         self.LL_down3 = nn.Sequential(
             BasicConv2d(channels, channels, stride=2, kernel_size=3, padding=1)

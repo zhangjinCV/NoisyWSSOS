@@ -33,10 +33,10 @@ aug = A.Compose([
     A.Flip(p=0.5),
     A.GaussNoise(p=0.5),
     A.Blur(p=0.2),
-    A.ShiftScaleRotate(rotate_limit=30),
-    A.RGBShift(p=0.2),
-    A.Superpixels(p=0.2),
-    A.ToGray(p=0.2),
+    A.ShiftScaleRotate(rotate_limit=45),
+    A.RGBShift(p=0.4),
+    A.Superpixels(p=0.4),
+    A.ToGray(p=0.4),
     A.CoarseDropout(),
     A.RandomGridShuffle(p=0.2),
     A.Emboss(p=0.2),
@@ -57,7 +57,7 @@ class LVISDataset(data.Dataset):
             self.annotations = json.load(f)
         
         self.images = glob.glob(image_root + '/*.jpg')
-        self.gts = [i.replace(image_root, gt_root).replace('.jpg', '.png') for i in self.images]
+        self.gts = [i.replace(image_root, gt_root).replace('.jpg', '.png').replace("_coconut", "") for i in self.images]
         
         self.img_transform = transforms.Compose([
             transforms.Resize((self.trainsize, self.trainsize)),
@@ -193,10 +193,12 @@ class COSwithBox(data.Dataset):
         self.trainsize = trainsize
         self.istraining = istraining
         self.gts = [gt_root + f for f in os.listdir(gt_root) if f.endswith('.png')]
-        self.images = [i.replace("mask", "image").replace("png", "jpg") for i in self.gts]
+        self.images = [image_root + f for f in os.listdir(image_root) if f.endswith('.jpg')]
         self.bbox_gts = [i.replace("mask", "box") for i in self.gts]
         self.edges = [i.replace("mask", "edge") for i in self.gts]
 
+        self.check_pairs(self.images, self.gts, self.bbox_gts, self.edges)
+        
         if self.istraining:
             self.images = np.array(sorted(self.images))
             self.gts = np.array(sorted(self.gts))
@@ -252,7 +254,11 @@ class COSwithBox(data.Dataset):
         with open(path, 'rb') as f:
             img = Image.open(f)
             return img.convert('L')
-
+    
+    def check_pairs(self, images, gts, bbox_gts, edges):
+        print("checking dataset pairs")
+        assert len(images) == len(gts) == len(bbox_gts) == len(edges)
+        print("check dataset pass!")
     def __len__(self):
         return self.size
 

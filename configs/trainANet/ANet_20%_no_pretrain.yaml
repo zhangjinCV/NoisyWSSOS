@@ -1,31 +1,31 @@
 seed: 2024
 save_iter: 1
-max_save_num: 5
+max_save_num: 3
 
 dataset:
   train:
     type: 'COSwithBox'
-    image_root: '/mnt/jixie16t/dataset/LVIS/image/'
-    gt_root: '/mnt/jixie16t/dataset/LVIS/mask_coconut/'
-    trainsize: 320
+    image_root: '/mnt/jixie16t/dataset/COD/LabelNoiseTrainDataset/CAMO_COD_train_20%/image/'
+    gt_root: '/mnt/jixie16t/dataset/COD/LabelNoiseTrainDataset/CAMO_COD_train_20%/mask/'
+    trainsize: 384
     istraining: true
   val:
     type: 'COSwithBox'
     image_root: '/mnt/jixie16t/dataset/COD/LabelNoiseTrainDataset/CAMO_COD_generate_80%/image/'
     gt_root: '/mnt/jixie16t/dataset/COD/LabelNoiseTrainDataset/CAMO_COD_generate_80%/mask/'
-    trainsize: 320
+    trainsize: 384
     istraining: false
 
 dataloader:
-  batch_size: 64
-  num_workers: 8
+  batch_size: 16
+  num_workers: 6
   batch_size_val: 64
   shuffle: true
 
 optimizer:
   type: 'AdamW'
   params:
-    lr: 0.0004
+    lr: 0.0001
     betas: [0.9, 0.999]
     eps: 0.00000001
     weight_decay: 0.01
@@ -34,9 +34,9 @@ optimizer:
 scheduler:
   type: 'LinearCosineAnnealingLR'
   params:
-    max_lr: 0.00048
-    min_lr: 0.00000048
-    warmup_epochs: 0
+    max_lr: 0.0001
+    min_lr: 0.0000001
+    warmup_epochs: 20
     total_epochs: 200
 
 model:
@@ -53,7 +53,7 @@ training:
   val_step: 10
   MASTER_ADDR: 'localhost'
   MASTER_PORT: '12355'
-  save_path: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/PANet/LVIS/'
+  save_path: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/ANet/20%_no_pretrain/'
   grad_accum: 1
   losses:
     loss1:
