@@ -7,13 +7,13 @@ dataset:
     type: 'COSwithBox'
     image_root: '/mnt/jixie16t/dataset/LVIS/image/'
     gt_root: '/mnt/jixie16t/dataset/LVIS/mask_coconut/'
-    trainsize: 320
+    trainsize: 288
     istraining: true
   val:
     type: 'COSwithBox'
     image_root: '/mnt/jixie16t/dataset/COD/LabelNoiseTrainDataset/CAMO_COD_generate_80%/image/'
     gt_root: '/mnt/jixie16t/dataset/COD/LabelNoiseTrainDataset/CAMO_COD_generate_80%/mask/'
-    trainsize: 320
+    trainsize: 288
     istraining: false
 
 dataloader:
@@ -45,7 +45,7 @@ model:
 training:
   epochs: 200
   q_epoch: 20
-  load: null
+  load: /mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/PANet/LVIS/epoch_116.pth
   pretrain: null
   gpu_id: '0,1,2,3'
   best_mae: 1.0

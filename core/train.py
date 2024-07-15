@@ -16,6 +16,7 @@ from utils import seed_torch, denormalize, convert_bn_to_syncbn, setup_process_g
 from utils import save_weight, save_checkpoint
 from torch import optim
 import tqdm
+from datetime import datetime, timedelta
 from torchvision.utils import make_grid
 import torch.distributed as dist
 import torch.multiprocessing as mp
@@ -136,11 +137,13 @@ def train(rank, world_size, opt):
             loss_fns.append([globals()[lt]() for lt in loss['type']])
             coefs.append(loss['coef'])
             gt_inputs.append(loss['gt_input'])
-    
-    losses = {'types': loss_fns, 'coef': coefs, 'gt_input': gt_inputs}
-    logging.info("losses: %s" % losses)
+    if rank == 0:
+        losses = {'types': loss_fns, 'coef': coefs, 'gt_input': gt_inputs}
+        logging.info("losses: %s" % losses)
 
     total_step = len(train_loader)
+    total_iters = total_step * opt['training']['epochs']
+    finished_iters = 0
     save_path = opt['training']['save_path']
     if rank == 0:
         print("starting logging!")
@@ -165,43 +168,57 @@ def train(rank, world_size, opt):
         model.train()
         loss_all = 0
         epoch_step = 0
+        data_end_time = datetime.now()
         lr = optimizer.param_groups[0]['lr']
 
         for i, data in enumerate(train_loader, start=1):
+            iter_start_time = datetime.now()
             data = {k: v.cuda(device=device) for k, v in data.items()}
             data['total_step'] = total_step
             data['tmp_iter'] = i
+
             with autocast():
                 logits_list = model(data)['res']
                 loss_list = loss_computation(logits_list, data['gt'], data['edge'], losses, data)
                 loss = sum(loss_list)
+
             scaler.scale(loss).backward()
-            
             if i % opt['training']['grad_accum'] == 0:
                 scaler.step(optimizer)
                 scaler.update()
-                optimizer.zero_grad() 
+                optimizer.zero_grad()
 
             step += 1
             epoch_step += 1
+            finished_iters = epoch_step + epoch * total_step
             loss_all += loss.item()
 
             if rank == 0 and (i % 20 == 0 or i == total_step or i == 1):
-                print(f'{datetime.now()} Epoch [{epoch:03d}/{opt["training"]["epochs"]:03d}], Step [{i:04d}/{total_step:04d}], LR {lr:.8f} Loss: {loss.item():.4f}')
-                logging.info(f'[Train Info]:Epoch [{epoch}/{opt["training"]["epochs"]}], Step [{i}/{total_step}], Loss: {loss.item():.4f}')
+                iter_end_time = datetime.now()
+                data_time = (iter_start_time - data_end_time).total_seconds()
+                iter_time = (iter_end_time - iter_start_time).total_seconds()
+                
+                eta_seconds = (total_iters - finished_iters) * iter_time
+                eta = str(timedelta(seconds=int(eta_seconds)))
+
+                print(f'{datetime.now()} | Epoch [{epoch:03d}/{opt["training"]["epochs"]:03d}], '
+                      f'Step [{i:04d}/{total_step:04d}], LR {lr:.8f}, Loss: {loss.item():.4f}, '
+                      f'DataTime: {data_time:.4f} sec, IterTime: {iter_time:.4f} sec, ETA: {eta}')
+                logging.info(f'[Train Info]:Epoch [{epoch}/{opt["training"]["epochs"]}], Step [{i}/{total_step}], '
+                             f'Loss: {loss.item():.4f}, DataTime: {data_time:.4f}, IterTime: {iter_time:.4f}, ETA: {eta}')
                 writer.add_scalar('Loss', loss.item(), global_step=step)
 
+                # Visualization of data, predictions and ground truths
                 grid_image = make_grid(denormalize(data['image'][0].clone().cpu().data), 1, normalize=True)
                 writer.add_image('RGB', grid_image, step)
-
                 grid_image = make_grid(data['gt'][0].clone().cpu().data, 1, normalize=True)
                 writer.add_image('GT', grid_image, step)
-
                 pre = (logits_list[4]).clone().sigmoid().cpu().data * 255.
                 pre = pre.to(torch.uint8)[0]
                 grid_image_2 = make_grid(pre, 1, normalize=False)
                 writer.add_image('Pre', grid_image_2, step)
 
+            data_end_time = datetime.now()
         scheduler.step()
 
         loss_all /= epoch_step

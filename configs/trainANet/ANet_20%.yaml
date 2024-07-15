@@ -17,7 +17,7 @@ dataset:
     istraining: false
 
 dataloader:
-  batch_size: 16
+  batch_size: 4
   num_workers: 6
   batch_size_val: 64
   shuffle: true
@@ -36,17 +36,16 @@ scheduler:
   params:
     max_lr: 0.0001
     min_lr: 0.0000001
-    warmup_epochs: 20
-    total_epochs: 200
+    warmup_epochs: 10
+    total_epochs: 100
 
 model:
   name: 'PANet'
 
 training:
-  epochs: 200
-  q_epoch: 20
+  epochs: 100
   load: null
-  pretrain: /mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/PANet/LVIS/epoch_158.pth
+  pretrain: /mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/PANet/LVIS/epoch_170.pth
   gpu_id: '0,1,2,3'
   best_mae: 1.0
   best_epoch: 1

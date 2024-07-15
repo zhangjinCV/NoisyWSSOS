@@ -1,16 +1,18 @@
 seed: 2024
+save_iter: 1
+max_save_num: 3
 
 dataset:
   train:
     type: 'COSwithBox'
-    image_root: '/mnt/jixie16t/zj/zj/works_in_phd/ECCV2024/github_release/NoisyCOD/data/LabelNoiseTrainDataset/CAMO_COD_train_1%/image/'
-    gt_root: '/mnt/jixie16t/zj/zj/works_in_phd/ECCV2024/github_release/NoisyCOD/data/LabelNoiseTrainDataset/CAMO_COD_train_1%/mask/'
+    image_root: '/mnt/jixie16t/dataset/COD/LabelNoiseTrainDataset/CAMO_COD_train_1%/image/'
+    gt_root: '/mnt/jixie16t/dataset/COD/LabelNoiseTrainDataset/CAMO_COD_train_1%/mask/'
     trainsize: 384
     istraining: true
   val:
     type: 'COSwithBox'
-    image_root: '/mnt/jixie16t/zj/zj/works_in_phd/ECCV2024/github_release/NoisyCOD/data/LabelNoiseTrainDataset/CAMO_COD_generate_99%/image/'
-    gt_root: '/mnt/jixie16t/zj/zj/works_in_phd/ECCV2024/github_release/NoisyCOD/data/LabelNoiseTrainDataset/CAMO_COD_generate_99%/mask/'
+    image_root: '/mnt/jixie16t/dataset/COD/LabelNoiseTrainDataset/CAMO_COD_generate_99%/image/'
+    gt_root: '/mnt/jixie16t/dataset/COD/LabelNoiseTrainDataset/CAMO_COD_generate_99%/mask/'
     trainsize: 384
     istraining: false
 
@@ -21,26 +23,29 @@ dataloader:
   shuffle: true
 
 optimizer:
-  type: 'Adam'
+  type: 'AdamW'
   params:
     lr: 0.0001
     betas: [0.9, 0.999]
     eps: 0.00000001
-    weight_decay: 0
+    weight_decay: 0.01
+    amsgrad: False
 
 scheduler:
-  type: 'CosineAnnealingLR'
+  type: 'LinearCosineAnnealingLR'
   params:
-    T_max: 200
-    eta_min: 0.0000001
+    max_lr: 0.0001
+    min_lr: 0.0000001
+    warmup_epochs: 10
+    total_epochs: 100
 
 model:
-  name: 'ANet'
+  name: 'PANet'
 
 training:
-  epochs: 200
-  q_epoch: 20
+  epochs: 100
   load: null
+  pretrain: /mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/PANet/LVIS/epoch_170.pth
   gpu_id: '0'
   best_mae: 1.0
   best_epoch: 1
@@ -48,11 +53,12 @@ training:
   MASTER_ADDR: 'localhost'
   MASTER_PORT: '12355'
   save_path: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/ANet/1%/'
+  grad_accum: 1
   losses:
     loss1:
       type: ['StructureLoss']
       gt_input: ["gt"]
-      coef: [2]
+      coef: [0.0625]
     loss2:
       type: ['StructureLoss']
       gt_input: ["gt"]
@@ -66,9 +72,9 @@ training:
       gt_input: ["gt"]
       coef: [0.5]
     loss5:
-      type: ['StructureLoss']
+      type: ['StructureLoss', 'UALoss']
       gt_input: ["gt"]
-      coef: [1]
+      coef: [1, 2]
     loss6:
       type: ['DiceLoss']
       gt_input: ["edge"]
