@@ -5,6 +5,7 @@ from thop import profile
 from thop import clever_format
 import random 
 import os 
+from torch.nn import functional as F
 from torch import nn
 from torch.optim.lr_scheduler import _LRScheduler
 
@@ -38,6 +39,23 @@ class LinearCosineAnnealingLR(_LRScheduler):
             ]
             return cosine_lr
 
+
+def tensor_pose_processing_mask(tensor, data, j):
+    if len(tensor.shape) == 3:
+        tensor = tensor.unsqueeze(0)
+    tensor = tensor.sigmoid()
+    tensor = F.interpolate(tensor, size=(data['W'][j].item(), data['H'][j].item()), mode='bilinear')
+    tensor = tensor.cpu().numpy().squeeze() * 255
+    np_one = tensor.astype(np.uint8)
+    return np_one
+
+def tensor_pose_processing_edge(tensor, data, j):
+    if len(tensor.shape) == 3:
+        tensor = tensor.unsqueeze(0)
+    tensor = F.interpolate(tensor, size=(data['W'][j].item(), data['H'][j].item()), mode='bilinear')
+    tensor = tensor.cpu().numpy().squeeze() * 255
+    np_one = tensor.astype(np.uint8)
+    return np_one
 
 def save_checkpoint(model, optimizer, scheduler, epoch, path, opt):
     save_iter = opt['save_iter']

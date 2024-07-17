@@ -57,25 +57,25 @@ class StructureLoss(nn.Module):
 class NCLoss(nn.Module):
     def __init__(self):
         super(NCLoss, self).__init__()
-
+        
     def wbce_loss(self, preds, targets):
         weit = 1 + 5 * torch.abs(F.avg_pool2d(targets, kernel_size=31, stride=1, padding=15) - targets)
-        wbce = F.binary_cross_entropy_with_logits(preds, targets, reduction='none')
+        wbce = F.binary_cross_entropy_with_logits(preds, targets, reduce='none')
         wbce = (weit * wbce).sum(dim=(2, 3)) / weit.sum(dim=(2, 3))
         return wbce.mean()
 
     def forward(self, preds, targets, q):
         wbce = self.wbce_loss(preds, targets)
-        preds = torch.sigmoid(preds)
+        preds = F.sigmoid(preds)
         preds_flat = preds.contiguous().view(preds.shape[0], -1)
         targets_flat = targets.contiguous().view(targets.shape[0], -1)
         numerator = torch.sum(torch.abs(preds_flat - targets_flat) ** q, dim=1)
         intersection = torch.sum(preds_flat * targets_flat, dim=1)
-        denominator = torch.sum(preds_flat, dim=1) + torch.sum(targets_flat, dim=1) - intersection + 1e-6
+        denominator = torch.sum(preds_flat, dim=1) + torch.sum(targets_flat, dim=1) - intersection + 1e-8
         loss = numerator / denominator
         if q == 2:
             return loss.mean() + wbce
-        else:
+        if q == 1:
             return loss.mean() * 2
 
 

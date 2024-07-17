@@ -88,7 +88,7 @@ class LVISDataset(data.Dataset):
         image = self.img_transform(image)
         bbox_image = self.img_transform(bbox_image)
         gt = self.gt_transform(gt)
-        return {'image': image, 'bbox_image': bbox_image, 'gt': gt, 'H': H, 'W': W}
+        return {'image': image, 'bbox_image': bbox_image, 'gt': gt, 'H': H, 'W': W, 'name': name}
 
     def process_mask(self, mask):
         # Assuming mask contains multiple classes, we select a random class
@@ -243,7 +243,7 @@ class COSwithBox(data.Dataset):
             edge = self.gt_transform(edge)
             return {'image': image, 'bbox_image': bbox_image, 'gt': gt, 'edge': edge, 'H': H, 'W': W}
         else:
-            return {'image': image, 'bbox_image': bbox_image, 'gt': gt, 'H': H, 'W': W}
+            return {'image': image, 'bbox_image': bbox_image, 'gt': gt, 'H': H, 'W': W, 'name': name}
 
     def rgb_loader(self, path):
         with open(path, 'rb') as f:

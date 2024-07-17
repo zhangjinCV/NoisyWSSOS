@@ -1,55 +1,59 @@
 seed: 2024
-save_iter: 1
-max_save_num: 5
+save_iter: 5
+max_save_num: 3
 
 dataset:
   train:
     type: 'COSwithBox'
-    image_root: '/mnt/jixie16t/dataset/COD/LabelNoiseTrainDataset/CAMO_COD_train_10%/image/'
-    gt_root: '/mnt/jixie16t/dataset/COD/LabelNoiseTrainDataset/CAMO_COD_train_10%/mask/'
+    image_root: '/mnt/jixie16t/dataset/COD/LabelNoiseTrainDataset/CAMO_COD_train_5%/image/'
+    gt_root: '/mnt/jixie16t/dataset/COD/LabelNoiseTrainDataset/CAMO_COD_train_5%/mask/'
     trainsize: 384
     istraining: true
   val:
     type: 'COSwithBox'
-    image_root: '/mnt/jixie16t/zj/zj/works_in_phd/ECCV2024/github_release/NoisyCOD/data/LabelNoiseTrainDataset/CAMO_COD_generate_90%/image/'
-    gt_root: '/mnt/jixie16t/zj/zj/works_in_phd/ECCV2024/github_release/NoisyCOD/data/LabelNoiseTrainDataset/CAMO_COD_generate_90%/mask/'
+    image_root: '/mnt/jixie16t/dataset/COD/LabelNoiseTrainDataset/CAMO_COD_generate_95%/image/'
+    gt_root: '/mnt/jixie16t/dataset/COD/LabelNoiseTrainDataset/CAMO_COD_generate_95%/mask/'
     trainsize: 384
     istraining: false
 
 dataloader:
   batch_size: 16
-  num_workers: 2
+  num_workers: 6
   batch_size_val: 64
   shuffle: true
 
 optimizer:
-  type: 'Adam'
+  type: 'AdamW'
   params:
-    lr: 0.0004
+    lr: 0.0001
     betas: [0.9, 0.999]
     eps: 0.00000001
-    weight_decay: 0
+    weight_decay: 0.01
+    amsgrad: False
 
 scheduler:
-  type: 'CosineAnnealingLR'
+  type: 'LinearCosineAnnealingLR'
   params:
-    T_max: 200
-    eta_min: 0.0000004
+    max_lr: 0.0001
+    min_lr: 0.0000001
+    warmup_epochs: 20
+    total_epochs: 200
 
 model:
-  name: 'ANet'
+  name: 'PANet'
 
 training:
   epochs: 200
-  q_epoch: 20
   load: null
+  pretrain: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/PANet/LVIS/epoch_170.pth'
   gpu_id: '0,1,2,3'
   best_mae: 1.0
   best_epoch: 1
-  val_step: 10
+  val_step: 20
   MASTER_ADDR: 'localhost'
   MASTER_PORT: '12355'
-  save_path: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/ANet/10%/'
+  save_path: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/ANet/5%/'
+  grad_accum: 1
   losses:
     loss1:
       type: ['StructureLoss']

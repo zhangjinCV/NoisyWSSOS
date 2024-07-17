@@ -78,7 +78,7 @@ def check_logits_losses(logits_list, losses):
             'The length of logits_list should equal to the types of loss config: {} != {}.'
             .format(len_logits, len_losses))
 
-def loss_computation(logits_list, targets, edges, losses, data):
+def loss_computation(logits_list, targets, edges, losses, data, opt):
     check_logits_losses(logits_list, losses)
     loss_list = []
     iter_percentage = data['tmp_iter'] / data['total_step']
@@ -94,6 +94,9 @@ def loss_computation(logits_list, targets, edges, losses, data):
                 target = edges
             if loss_fn.__class__.__name__ == 'UALoss':
                 loss = coef * loss_fn(logits, target, iter_percentage)
+            elif loss_fn.__class__.__name__ == 'NCLoss':
+                q = 1 if data['tmp_epoch'] > opt['training']['q_epoch'] else 2
+                loss = coef * loss_fn(logits, target, q)
             else:
                 loss = coef * loss_fn(logits, target)
             loss_list.append(loss)
@@ -137,8 +140,8 @@ def train(rank, world_size, opt):
             loss_fns.append([globals()[lt]() for lt in loss['type']])
             coefs.append(loss['coef'])
             gt_inputs.append(loss['gt_input'])
+    losses = {'types': loss_fns, 'coef': coefs, 'gt_input': gt_inputs}
     if rank == 0:
-        losses = {'types': loss_fns, 'coef': coefs, 'gt_input': gt_inputs}
         logging.info("losses: %s" % losses)
 
     total_step = len(train_loader)
@@ -173,13 +176,14 @@ def train(rank, world_size, opt):
 
         for i, data in enumerate(train_loader, start=1):
             iter_start_time = datetime.now()
-            data = {k: v.cuda(device=device) for k, v in data.items()}
+            data = {k: v.to(device) if isinstance(v, torch.Tensor) else v for k, v in data.items()}
             data['total_step'] = total_step
             data['tmp_iter'] = i
+            data['tmp_epoch'] = epoch
 
             with autocast():
                 logits_list = model(data)['res']
-                loss_list = loss_computation(logits_list, data['gt'], data['edge'], losses, data)
+                loss_list = loss_computation(logits_list, data['gt'], data['edge'], losses, data, opt)
                 loss = sum(loss_list)
 
             scaler.scale(loss).backward()
@@ -208,12 +212,11 @@ def train(rank, world_size, opt):
                              f'Loss: {loss.item():.4f}, DataTime: {data_time:.4f}, IterTime: {iter_time:.4f}, ETA: {eta}')
                 writer.add_scalar('Loss', loss.item(), global_step=step)
 
-                # Visualization of data, predictions and ground truths
                 grid_image = make_grid(denormalize(data['image'][0].clone().cpu().data), 1, normalize=True)
                 writer.add_image('RGB', grid_image, step)
                 grid_image = make_grid(data['gt'][0].clone().cpu().data, 1, normalize=True)
                 writer.add_image('GT', grid_image, step)
-                pre = (logits_list[4]).clone().sigmoid().cpu().data * 255.
+                pre = (logits_list[opt['training']['main_output_index']]).clone().sigmoid().cpu().data * 255.
                 pre = pre.to(torch.uint8)[0]
                 grid_image_2 = make_grid(pre, 1, normalize=False)
                 writer.add_image('Pre', grid_image_2, step)
@@ -242,9 +245,9 @@ def val(test_loader, model, epoch, save_path, writer, opt):
     with torch.no_grad():
         mae_sum = []
         for i, data in tqdm.tqdm(enumerate(test_loader, start=1)):
-            data = {k: v.cuda() for k, v in data.items()}
+            data = {k: v.cuda() if isinstance(v, torch.Tensor) else v for k, v in data.items()}
             outputs = model(data)
-            res = outputs['res'][4]
+            res = outputs['res'][opt['training']['main_output_index']]
             res = res.sigmoid()
             for j in range(len(res)):
                 pre = F.interpolate(res[j].unsqueeze(0), size=(data['H'][j].item(), data['W'][j].item()), mode='bilinear')

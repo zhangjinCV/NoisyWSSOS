@@ -47,7 +47,8 @@ class UNetResNet50(nn.Module):
             nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
         )
 
-    def forward(self, x, gts=None):
+    def forward(self, data):
+        x = data['image']
         enc1 = self.enc1(x)
         enc2 = self.enc2(enc1)
         enc3 = self.enc3(enc2)
@@ -61,19 +62,7 @@ class UNetResNet50(nn.Module):
         dec3 = self.dec3(torch.cat([dec4, enc3], dim=1))
         dec2 = self.dec2(torch.cat([dec3, enc2], dim=1))
         out2 = F.interpolate(self.final(dec2), scale_factor=2, mode='bilinear')
-        return {'res': out2}  
-    
-    def cal_loss(self, preds_dict, data, if_noise_robust):
-        preds = preds_dict['res']
-        gts = data['gts']
-        boxes = data['boxes']
-        if not if_noise_robust:
-            loss = structure_loss(preds, gts)
-        else:
-            loss = NCLoss(preds, gts)
-        return loss
-
-
+        return {'res': [out2]}  
 
    
 if __name__ == "__main__":
