@@ -1,0 +1,26 @@
+UNet_Fully CAMO &  0.108  &  0.790  &  0.673  &  0.759
+UNet_Fully CHAMELEON_TestingDataset &  0.047  &  0.885  &  0.753  &  0.848
+UNet_Fully COD10K &  0.048  &  0.842  &  0.666  &  0.795
+UNet_Fully NC4K &  0.062  &  0.864  &  0.756  &  0.830
+
+UNet_20_ncloss CAMO &  0.104  &  0.803  &  0.676  &  0.730
+UNet_20_ncloss CHAMELEON_TestingDataset &  0.044  &  0.894  &  0.745  &  0.819
+UNet_20_ncloss COD10K &  0.046  &  0.850  &  0.664  &  0.774
+UNet_20_ncloss NC4K &  0.058  &  0.874  &  0.764  &  0.812
+
+fully_train_ncloss CAMO &  0.107  &  0.796  &  0.672  &  0.724
+fully_train_ncloss CHAMELEON_TestingDataset &  0.045  &  0.899  &  0.746  &  0.814
+fully_train_ncloss COD10K &  0.046  &  0.846  &  0.656  &  0.768
+fully_train_ncloss NC4K &  0.059  &  0.868  &  0.758  &  0.805
+PNet_20_ncloss CAMO &  0.051  &  0.915  &  0.829  &  0.852
+PNet_20_ncloss CHAMELEON_TestingDataset &  0.026  &  0.957  &  0.843  &  0.886
+PNet_20_ncloss COD10K &  0.026  &  0.917  &  0.778  &  0.854
+PNet_20_ncloss NC4K &  0.034  &  0.932  &  0.847  &  0.879
+PNet_20_ncloss CAMO &  0.055  &  0.894  &  0.818  &  0.842
+PNet_20_ncloss CHAMELEON_TestingDataset &  0.025  &  0.952  &  0.840  &  0.886
+PNet_20_ncloss COD10K &  0.027  &  0.917  &  0.769  &  0.847
+PNet_20_ncloss NC4K &  0.036  &  0.925  &  0.838  &  0.872
+PNet_20_ncloss CAMO &  0.044  &  0.931  &  0.856  &  0.870
+PNet_20_ncloss CHAMELEON_TestingDataset &  0.026  &  0.953  &  0.852  &  0.888
+PNet_20_ncloss COD10K &  0.023  &  0.933  &  0.795  &  0.863
+PNet_20_ncloss NC4K &  0.031  &  0.938  &  0.855  &  0.885

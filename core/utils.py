@@ -130,6 +130,8 @@ def seed_torch(seed=2024):
     torch.cuda.manual_seed_all(seed)  # if you are using multi-GPU.
     torch.backends.cudnn.benchmark = False
     torch.backends.cudnn.deterministic = True
+    torch.use_deterministic_algorithms(True)
+
 
 
 def get_coef(iter_percentage, method):

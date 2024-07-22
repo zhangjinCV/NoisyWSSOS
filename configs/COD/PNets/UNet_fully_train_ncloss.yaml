@@ -5,14 +5,8 @@ max_save_num: 3
 dataset:
   train1:
     type: 'COSwithNoBox'
-    image_root: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/data/ANet/pseudo_label_80%/image/'
-    gt_root: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/data/ANet/pseudo_label_80%/mask/'
-    trainsize: 384
-    istraining: true
-  train2:
-    type: 'COSwithNoBox'
-    image_root: '/mnt/jixie16t/dataset/COD/LabelNoiseTrainDataset/CAMO_COD_train_20%/image/'
-    gt_root: '/mnt/jixie16t/dataset/COD/LabelNoiseTrainDataset/CAMO_COD_train_20%/mask/'
+    image_root: '/mnt/jixie16t/dataset/COD/CAMO_COD_train/image/'
+    gt_root: '/mnt/jixie16t/dataset/COD/CAMO_COD_train/mask/'
     trainsize: 384
     istraining: true
   val:
@@ -27,8 +21,8 @@ dataset:
     gt_root: ['/mnt/jixie16t/dataset/COD/CHAMELEON_TestingDataset/mask/', '/mnt/jixie16t/dataset/COD/CAMO/mask/', '/mnt/jixie16t/dataset/COD/COD10K/mask/', '/mnt/jixie16t/dataset/COD/NC4K/mask/']
     trainsize: 384
     istraining: false
-    save_path: ['/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/data/PNets/UNet_20_ncloss/CHAMELEON_TestingDataset', '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/data/PNets/UNet_20_ncloss/CAMO', '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/data/PNets/UNet_20_ncloss/COD10K', '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/data/PNets/UNet_20_ncloss/NC4K']
-    load: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/UNet/20%_with_ncloss/model_best.pth'
+    save_path: ['/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/data/PNets/fully_train_ncloss/CHAMELEON_TestingDataset', '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/data/PNets/fully_train_ncloss/CAMO', '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/data/PNets/fully_train_ncloss/COD10K', '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/data/PNets/fully_train_ncloss/NC4K']
+    load: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/UNet/fully_train_ncloss/model_best.pth'
     save_indices: [0]
     save_index_names: ['']
     pose_process: ['tensor_pose_processing_mask']
@@ -70,7 +64,7 @@ training:
   val_step: 1
   MASTER_ADDR: 'localhost'
   MASTER_PORT: '12355'
-  save_path: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/UNet/20%_with_ncloss/'
+  save_path: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/UNet/fully_train_ncloss/'
   grad_accum: 1
   main_output_index: 0
   losses:

@@ -1,5 +1,5 @@
 seed: 2024
-save_iter: 5
+save_iter: 1
 max_save_num: 3
 
 dataset:
@@ -9,96 +9,97 @@ dataset:
     gt_root: '/mnt/jixie16t/dataset/COD/LabelNoiseTrainDataset/CAMO_COD_train_20%/mask/'
     trainsize: 384
     istraining: true
+    batch_size: 16
+    num_workers: 12
+    shuffle: true
   val:
     type: 'COSwithBox'
     image_root: '/mnt/jixie16t/dataset/COD/LabelNoiseTrainDataset/CAMO_COD_generate_80%/image/'
     gt_root: '/mnt/jixie16t/dataset/COD/LabelNoiseTrainDataset/CAMO_COD_generate_80%/mask/'
     trainsize: 384
     istraining: false
+    batch_size: 64
+    num_workers: 12
+    shuffle: false
   test:
     type: 'COSwithBox'
-    image_root: '/mnt/jixie16t/dataset/COD/LabelNoiseTrainDataset/CAMO_COD_generate_80%/image/'
-    gt_root: '/mnt/jixie16t/dataset/COD/LabelNoiseTrainDataset/CAMO_COD_generate_80%/mask/'
+    image_root: ['/mnt/jixie16t/dataset/COD/LabelNoiseTrainDataset/CAMO_COD_generate_80%/image/']
+    gt_root: ['/mnt/jixie16t/dataset/COD/LabelNoiseTrainDataset/CAMO_COD_generate_80%/mask/']
     trainsize: 384
     istraining: false
-    save_path: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/data/ANet/pseudo_label_80%/'
+    batch_size: 64
+    num_workers: 6
+    shuffle: false
+    save_path: ['/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/data/ANet/pseudo_label_80%/']
     load: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/ANet/20%/model_best.pth'
     save_indices: [4, 8]
     save_index_names: ['mask', 'edge']
     pose_process: ['tensor_pose_processing_mask', 'tensor_pose_processing_edge']
 
-dataloader:
-  batch_size: 16
-  num_workers: 6
-  batch_size_val: 64
-  shuffle: true
 
 optimizer:
-  type: 'AdamW'
+  type: 'Adam'
   params:
     lr: 0.0001
-    betas: [0.9, 0.999]
-    eps: 0.00000001
-    weight_decay: 0.01
-    amsgrad: False
 
 scheduler:
   type: 'LinearCosineAnnealingLR'
   params:
-    max_lr: 0.0004
-    min_lr: 0.0000004
-    warmup_epochs: 20
-    total_epochs: 200
+    max_lr: 0.0001
+    min_lr: 0.0000001
+    warmup_epochs: 0
+    total_epochs: 100
 
 model:
   name: 'PANet'
 
 training:
-  epochs: 200
+  epochs: 100
   load: null
-  pretrain: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/PANet/LVIS/epoch_170.pth'
+  pretrain: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/PANet/LVIS/epoch_50.pth'
   gpu_id: '0,1,2,3'
   best_mae: 1.0
   best_epoch: 1
-  val_step: 20
+  val_step: 10
   MASTER_ADDR: 'localhost'
   MASTER_PORT: '12355'
   save_path: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/ANet/20%/'
-  grad_accum: 1
+  find_unused_parameters: false
+  main_output_index: 4
   losses:
-    loss1:
-      type: ['StructureLoss']
-      gt_input: ["gt"]
-      coef: [0.0625]
-    loss2:
-      type: ['StructureLoss']
-      gt_input: ["gt"]
-      coef: [0.125]
-    loss3:
-      type: ['StructureLoss']
-      gt_input: ["gt"]
-      coef: [0.25]
-    loss4:
-      type: ['StructureLoss']
-      gt_input: ["gt"]
-      coef: [0.5]
-    loss5:
-      type: ['StructureLoss', 'UALoss']
-      gt_input: ["gt"]
-      coef: [1, 2]
-    loss6:
-      type: ['DiceLoss']
-      gt_input: ["edge"]
-      coef: [0]
-    loss7:
-      type: ['DiceLoss']
-      gt_input: ["edge"]
-      coef: [0.5]
-    loss8:
-      type: ['DiceLoss']
-      gt_input: ["edge"]
-      coef: [1]
-    loss9:
-      type: ['DiceLoss']
-      gt_input: ["edge"]
-      coef: [2]
+      loss1:
+        type: ['StructureLoss']
+        gt_input: ["gt"]
+        coef: [0.0625]
+      loss2:
+        type: ['StructureLoss']
+        gt_input: ["gt"]
+        coef: [0.125]
+      loss3:
+        type: ['StructureLoss']
+        gt_input: ["gt"]
+        coef: [0.25]
+      loss4:
+        type: ['StructureLoss']
+        gt_input: ["gt"]
+        coef: [0.5]
+      loss5:
+        type: ['StructureLoss', 'UALoss']
+        gt_input: ["gt", "gt"]
+        coef: [1, 2]
+      loss6:
+        type: ['DiceLoss']
+        gt_input: ["edge"]
+        coef: [0]
+      loss7:
+        type: ['DiceLoss']
+        gt_input: ["edge"]
+        coef: [0.125]
+      loss8:
+        type: ['DiceLoss']
+        gt_input: ["edge"]
+        coef: [0.25]
+      loss9:
+        type: ['DiceLoss']
+        gt_input: ["edge"]
+        coef: [0.5]

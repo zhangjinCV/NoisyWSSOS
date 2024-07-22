@@ -1,4 +1,5 @@
 import os
+os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8'
 import argparse
 import yaml
 import random
@@ -21,11 +22,10 @@ from torchvision.utils import make_grid
 import torch.distributed as dist
 import torch.multiprocessing as mp
 from torch.nn.parallel import DistributedDataParallel as DDP
-from datasets.dataset import get_dataset, seed_torch
+from datasets.dataset import get_dataset
 from torch.cuda.amp import autocast, GradScaler
 from models.losses import *
 import json 
-
 
 def build_model(opt):
     model = globals()[opt['model']['name']]()
@@ -45,30 +45,38 @@ def build_scheduler(opt, optimizer):
     scheduler = scheduler_class(optimizer, **opt['scheduler']['params'])
     return scheduler
 
-def build_dataloader(opt, dataset_type, world_size=None, rank=None):
-    datasets = []
-    for key in opt['dataset']:
-        if key.startswith(dataset_type):
-            datasets.append(get_dataset(opt, key))
-    combined_dataset = torch.utils.data.ConcatDataset(datasets)
-
-    if dataset_type.startswith('train') and world_size is not None and rank is not None:
-        sampler = torch.utils.data.distributed.DistributedSampler(combined_dataset, num_replicas=world_size, rank=rank)
+def build_dataloader(opt, dataset_key, world_size=None, rank=None):
+    dataset_config = opt['dataset'][dataset_key]
+    dataset = get_dataset(opt, dataset_key)
+    if dataset_config['istraining'] and world_size is not None and rank is not None:
+        sampler = torch.utils.data.distributed.DistributedSampler(dataset, num_replicas=world_size, rank=rank)
         dataloader = torch.utils.data.DataLoader(
-            dataset=combined_dataset, 
-            batch_size=opt['dataloader']['batch_size'], 
-            num_workers=opt['dataloader']['num_workers'], 
+            dataset=dataset, 
+            batch_size=dataset_config['batch_size'], 
+            num_workers=dataset_config['num_workers'], 
             sampler=sampler
         )
+        return dataloader, sampler
     else:
         dataloader = torch.utils.data.DataLoader(
-            dataset=combined_dataset, 
-            batch_size=opt['dataloader']['batch_size_val'], 
-            num_workers=opt['dataloader']['num_workers'], 
-            shuffle=opt['dataloader']['shuffle']
+            dataset=dataset, 
+            batch_size=dataset_config['batch_size'], 
+            num_workers=dataset_config['num_workers'], 
+            shuffle=dataset_config['shuffle']
         )
+        return dataloader, None
 
-    return dataloader
+def merge_data_batches(data_batches):
+    merged_data = {}
+    for key in data_batches[0].keys():
+        merged_data[key] = torch.cat([data_batch[key] for data_batch in data_batches], dim=0)
+    return merged_data
+
+def shuffle_data(data):
+    batch_size = data['image'].size()[0]
+    indices = torch.randperm(batch_size)
+    shuffled_data = {key: value[indices] for key, value in data.items()}
+    return shuffled_data
 
 def check_logits_losses(logits_list, losses):
     len_logits = len(logits_list)
@@ -110,12 +118,15 @@ def train(rank, world_size, opt):
 
     model = build_model(opt)
     model.to(device)
-    model = DDP(model, device_ids=[rank], find_unused_parameters=True)
+    model = DDP(model, device_ids=[rank], find_unused_parameters=opt['training']['find_unused_parameters'])
 
     optimizer = build_optimizer(opt, model)
     scheduler = build_scheduler(opt, optimizer)
-    train_loader = build_dataloader(opt, 'train', world_size, rank)
-    val_loader = build_dataloader(opt, 'val')
+
+    dataloaders = {key: build_dataloader(opt, key, world_size, rank) for key in opt['dataset'] if 'test' != key}
+    train_loaders = {key: dataloaders[key][0] for key in dataloaders.keys() if 'train' in key}
+    samplers = {key: dataloaders[key][1] for key in dataloaders.keys() if 'train' in key}
+    val_loader = dataloaders['val'][0]
 
     start_epoch = 1
     if opt['training']['load'] is not None and os.path.exists(opt['training']['load']):
@@ -144,7 +155,7 @@ def train(rank, world_size, opt):
     if rank == 0:
         logging.info("losses: %s" % losses)
 
-    total_step = len(train_loader)
+    total_step = min([len(loader) for loader in train_loaders.values()])
     total_iters = total_step * opt['training']['epochs']
     finished_iters = 0
     save_path = opt['training']['save_path']
@@ -153,9 +164,17 @@ def train(rank, world_size, opt):
         logger = logging.getLogger()
         logger.setLevel(logging.INFO)
         fh = logging.FileHandler(os.path.join(save_path, 'log.log'), mode='a')
+        fh.setLevel(logging.INFO)
         formatter = logging.Formatter('[%(asctime)s-%(filename)s-%(levelname)s:%(message)s]', datefmt='%Y-%m-%d %I:%M:%S %p')
         fh.setFormatter(formatter)
         logger.addHandler(fh)
+        
+        # 设置StreamHandler并将其日志级别设置为WARNING以避免在终端打印INFO日志
+        ch = logging.StreamHandler()
+        ch.setLevel(logging.WARNING)
+        ch.setFormatter(formatter)
+        logger.addHandler(ch)
+        
         logging.info("Train")
         logging.info("Config %s" % opt)
 
@@ -166,7 +185,9 @@ def train(rank, world_size, opt):
     scaler = GradScaler()
 
     for epoch in range(start_epoch, opt['training']['epochs'] + 1):
-        train_loader.sampler.set_epoch(epoch)
+        for sampler in samplers.values():
+            if sampler is not None:
+                sampler.set_epoch(epoch)
 
         model.train()
         loss_all = 0
@@ -174,9 +195,13 @@ def train(rank, world_size, opt):
         data_end_time = datetime.now()
         lr = optimizer.param_groups[0]['lr']
 
-        for i, data in enumerate(train_loader, start=1):
+        for i, data_batch in enumerate(zip(*train_loaders.values()), start=1):
+            optimizer.zero_grad()
             iter_start_time = datetime.now()
+            
+            data = merge_data_batches(data_batch)
             data = {k: v.to(device) if isinstance(v, torch.Tensor) else v for k, v in data.items()}
+            data = shuffle_data(data)
             data['total_step'] = total_step
             data['tmp_iter'] = i
             data['tmp_epoch'] = epoch
@@ -187,11 +212,9 @@ def train(rank, world_size, opt):
                 loss = sum(loss_list)
 
             scaler.scale(loss).backward()
-            if i % opt['training']['grad_accum'] == 0:
-                scaler.step(optimizer)
-                scaler.update()
-                optimizer.zero_grad()
-
+            scaler.step(optimizer)
+            scaler.update()
+            
             step += 1
             epoch_step += 1
             finished_iters = epoch_step + epoch * total_step
@@ -207,7 +230,7 @@ def train(rank, world_size, opt):
 
                 print(f'{datetime.now()} | Epoch [{epoch:03d}/{opt["training"]["epochs"]:03d}], '
                       f'Step [{i:04d}/{total_step:04d}], LR {lr:.8f}, Loss: {loss.item():.4f}, '
-                      f'DataTime: {data_time:.4f} sec, IterTime: {iter_time:.4f} sec, ETA: {eta}')
+                      f'DataTime: {data_time:.4f} sec, IterTime: {iter_time:.4f}sec, ImageShape: {data["image"].shape},  ETA: {eta}')
                 logging.info(f'[Train Info]:Epoch [{epoch}/{opt["training"]["epochs"]}], Step [{i}/{total_step}], '
                              f'Loss: {loss.item():.4f}, DataTime: {data_time:.4f}, IterTime: {iter_time:.4f}, ETA: {eta}')
                 writer.add_scalar('Loss', loss.item(), global_step=step)
@@ -237,7 +260,6 @@ def train(rank, world_size, opt):
     if rank == 0:
         writer.close()
     dist.destroy_process_group()
-
 
 def val(test_loader, model, epoch, save_path, writer, opt):
     torch.cuda.empty_cache()
@@ -275,7 +297,6 @@ def main():
     with open(args.config, 'r') as file:
         opt = yaml.safe_load(file)
 
-    assert opt['training']['grad_accum'] >= 1
     seed_torch(opt['seed'])
 
     if not os.path.exists(opt['training']['save_path']):
@@ -287,7 +308,6 @@ def main():
     gpu_ids = opt['training']['gpu_id'].split(',')
     os.environ['CUDA_VISIBLE_DEVICES'] = ','.join(gpu_ids)
     mp.spawn(train, args=(world_size, opt), nprocs=world_size, join=True)
-
 
 if __name__ == '__main__':
     main()

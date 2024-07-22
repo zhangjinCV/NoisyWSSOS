@@ -93,12 +93,12 @@ class ConvNeXt(nn.Module):
             self.stages.append(stage)
             cur += depths[i]
 
-        self.norm = nn.LayerNorm(dims[-1], eps=1e-6) # final norm layer
-        self.head = nn.Linear(dims[-1], num_classes)
+        # self.norm = nn.LayerNorm(dims[-1], eps=1e-6) # final norm layer
+        # self.head = nn.Linear(dims[-1], num_classes)
 
-        self.apply(self._init_weights)
-        self.head.weight.data.mul_(head_init_scale)
-        self.head.bias.data.mul_(head_init_scale)
+        # self.apply(self._init_weights)
+        # self.head.weight.data.mul_(head_init_scale)
+        # self.head.bias.data.mul_(head_init_scale)
 
     def _init_weights(self, m):
         if isinstance(m, (nn.Conv2d, nn.Linear)):
@@ -159,30 +159,28 @@ model_urls = {
 
 def convnext_tiny(pretrained=False,in_22k=False, **kwargs):
     model = ConvNeXt(depths=[3, 3, 9, 3], dims=[96, 192, 384, 768], **kwargs)
-    if pretrained:
-        url = model_urls['convnext_tiny_22k'] if in_22k else model_urls['convnext_tiny_1k']
-        checkpoint = torch.hub.load_state_dict_from_url(url=url, map_location="cpu", check_hash=True)
-        model.load_state_dict(checkpoint["model"])
+    model.load_state_dict(torch.load("/mnt/jixie16t/dataset/imagenet_pretrained_weight/ConvNeXt/convnext_tiny_22k_1k_384.pth")['model'], strict=False)
+    print("convnext loaded!")
     return model
 
 
 def convnext_small(pretrained=False,in_22k=False, **kwargs):
     model = ConvNeXt(depths=[3, 3, 27, 3], dims=[96, 192, 384, 768], **kwargs)
-    model.load_state_dict(torch.load("/mnt/jixie16t/dataset/imagenet_pretrained_weight/ConvNeXt/convnext_small_22k_1k_384.pth")['model'])
+    model.load_state_dict(torch.load("/mnt/jixie16t/dataset/imagenet_pretrained_weight/ConvNeXt/convnext_small_22k_1k_384.pth")['model'], strict=False)
     print("convnext loaded!")
     return model
 
 
 def convnext_base(pretrained=False, in_22k=False, **kwargs):
     model = ConvNeXt(depths=[3, 3, 27, 3], dims=[128, 256, 512, 1024], **kwargs)
-    model.load_state_dict(torch.load("/mnt/jixie16t/dataset/imagenet_pretrained_weight/ConvNeXt/convnext_base_22k_1k_384.pth")['model'])
+    model.load_state_dict(torch.load("/mnt/jixie16t/dataset/imagenet_pretrained_weight/ConvNeXt/convnext_base_22k_1k_384.pth")['model'], strict=False)
     print("convnext loaded!")
     return model
 
 
 def convnext_large(pretrained=False, in_22k=False, **kwargs):
     model = ConvNeXt(depths=[3, 3, 27, 3], dims=[192, 384, 768, 1536], **kwargs)
-    model.load_state_dict(torch.load("/mnt/jixie16t/dataset/imagenet_pretrained_weight/ConvNeXt/convnext_large_22k_1k_384.pth")['model'])
+    model.load_state_dict(torch.load("/mnt/jixie16t/dataset/imagenet_pretrained_weight/ConvNeXt/convnext_large_22k_1k_384.pth")['model'], strict=False)
     print("convnext loaded!")
     return model
 

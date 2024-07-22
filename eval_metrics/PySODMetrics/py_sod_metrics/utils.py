@@ -19,8 +19,8 @@ def prepare_data(pred: np.ndarray, gt: np.ndarray) -> tuple:
     gt = gt > 128
     # im2double, mapminmax
     pred = pred / 255
-    if pred.max() != pred.min():
-        pred = (pred - pred.min()) / (pred.max() - pred.min())
+    # if pred.max() != pred.min():
+    #     pred = (pred - pred.min()) / (pred.max() - pred.min())
     return pred, gt
 
 

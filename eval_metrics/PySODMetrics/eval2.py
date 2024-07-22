@@ -4,12 +4,12 @@ from tqdm import tqdm
 from py_sod_metrics import MAE, Emeasure, Fmeasure, Smeasure, WeightedFmeasure
 
 
-methods=["1%", "5%", "10%", "20%", '50%']
+methods=["PNet_20_ncloss"]
 for method in methods: 
-    for _data_name in ['CAMO_TestingDataset','CHAMELEON_TestingDataset','COD10K_Test','NC4K']:
+    for _data_name in ['CAMO','CHAMELEON_TestingDataset','COD10K','NC4K']:
         print("eval-dataset: {}".format(_data_name))
-        mask_root = '/home/zj/data/COD/{}/{}/'.format(_data_name,"mask") # change path
-        pred_root = '/home/zj/data/COD/res/step2/fix_q/{}/{}/'.format(method, _data_name) # change path
+        mask_root = '/mnt/jixie16t/dataset/COD/{}/{}/'.format(_data_name,"mask") # change path
+        pred_root = '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/data/PNets/{}/{}/'.format(method, _data_name) # change path
         mask_name_list = sorted(os.listdir(mask_root))
         FM = Fmeasure()
         WFM = WeightedFmeasure()
@@ -37,7 +37,7 @@ for method in methods:
         
 
         print(results)
-        file=open("/mnt/550aa7b7-3fbe-43b7-86bd-198efb9b4305/zj/works_in_phd/ECCV2024/scores/eval_results.txt", "a")
+        file=open("/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/score_records/PNets/eval_results.txt", "a")
         file.write(method+' '+_data_name+' '+str(results)+'\n')
 
 print("Eval finished!")

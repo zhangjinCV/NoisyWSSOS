@@ -31,18 +31,14 @@ aug = A.Compose([
     A.HorizontalFlip(p=0.5),
     A.VerticalFlip(p=0.5),
     A.Flip(p=0.5),
-    A.GaussNoise(p=0.5),
+    A.Transpose(p=0.5),
+    A.GaussNoise(p=0.2),
     A.Blur(p=0.2),
-    A.ShiftScaleRotate(rotate_limit=45),
-    A.RGBShift(p=0.4),
-    A.Superpixels(p=0.4),
-    A.ToGray(p=0.4),
-    A.CoarseDropout(),
-    A.RandomGridShuffle(p=0.2),
-    A.Emboss(p=0.2),
-    A.Posterize(p=0.2),
-    A.ToSepia(p=0.2),
-    A.Perspective(p=0.2)
+    A.ShiftScaleRotate(rotate_limit=30),
+    A.ToGray(p=0.2),
+    A.Emboss(p=0.5),
+    A.Posterize(p=0.5),
+    A.Perspective(p=0.5)
 ], additional_targets={'image2': 'image', 'mask': 'mask', 'edge': 'mask'})
 
 
@@ -127,13 +123,12 @@ class LVISDataset(data.Dataset):
 
 
 class COSwithNoBox(data.Dataset):
-    def __init__(self, image_root, gt_root, trainsize, istraining=True):
+    def __init__(self, image_root, gt_root, trainsize, istraining=True, repeat=1):
         self.trainsize = trainsize
         self.istraining = istraining
-        
-        self.images = [image_root + f for f in os.listdir(image_root) if f.endswith('.jpg')] 
-        self.gts = [i.replace("image", "mask").replace(".jpg", ".png") for i in self.images] 
-        self.edges = [i.replace("mask", "edge") for i in self.gts] 
+        self.images = [image_root + f for f in os.listdir(image_root) if f.endswith('.jpg')] * repeat
+        self.gts = [i.replace("image", "mask").replace(".jpg", ".png") for i in self.images] * repeat
+        self.edges = [i.replace("mask", "edge") for i in self.gts] * repeat
 
         if self.istraining:
             self.images = np.array(sorted(self.images))
@@ -173,7 +168,7 @@ class COSwithNoBox(data.Dataset):
             edge = self.gt_transform(edge)
             return {'image': image, 'gt': gt, 'edge': edge, 'H': H, 'W': W}
         else:
-            return {'image': image, 'gt': gt, 'H': H, 'W': W}
+            return {'image': image, 'gt': gt, 'H': H, 'W': W, 'name': name}
 
     def rgb_loader(self, path):
         with open(path, 'rb') as f:
@@ -269,6 +264,7 @@ def get_dataset(config, dataset_key):
         image_root=dataset_config['image_root'],
         gt_root=dataset_config['gt_root'],
         trainsize=dataset_config['trainsize'],
-        istraining=dataset_config['istraining']
+        istraining=dataset_config['istraining'],
+        repeat=dataset_config.get('repeat', 1)
     )
     return dataset

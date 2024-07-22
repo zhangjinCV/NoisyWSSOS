@@ -9,7 +9,7 @@ for method in methods:
     for _data_name in ['pseudo_label_80%']:
         print("eval-dataset: {}".format(_data_name))
         mask_root = '/mnt/jixie16t/dataset/COD/LabelNoiseTrainDataset/CAMO_COD_generate_80%/mask/'
-        pred_root = '/mnt/550aa7b7-3fbe-43b7-86bd-198efb9b4305/zj/works_in_phd/Hacker/SINet/SINet-V2-main/SINet-V2-main/res_ns/{}/{}/'.format(method, _data_name) # change path
+        pred_root = "/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/data/ANet/pseudo_label_80%/mask/"
         mask_name_list = sorted(os.listdir(mask_root))
         FM = Fmeasure()
         WFM = WeightedFmeasure()

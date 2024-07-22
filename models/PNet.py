@@ -1,27 +1,16 @@
 import torch.nn as nn
 import torch
 import torch.nn.functional as F
-from .ConvNeXt import convnext_large
+from .pvtv2 import pvt_v2_b4
+from .losses import UALoss, NCLoss, DiceLoss
 
 
-def modify_conv1(model):
-    original_conv1 = model.downsample_layers[0][0]
-    new_conv1 = nn.Conv2d(6, original_conv1.out_channels, kernel_size=original_conv1.kernel_size,
-                          stride=original_conv1.stride, padding=original_conv1.padding, bias=False)
-    with torch.no_grad():
-        new_conv1.weight[:, :3, :, :] = original_conv1.weight
-        new_conv1.weight[:, 3:, :, :] = original_conv1.weight
-    model.downsample_layers[0][0] = new_conv1
-    return model
-
-
-class PANet(nn.Module):
+class PNet(nn.Module):
     def __init__(self, channels=64):
-        super(PANet, self).__init__()
-        self.shared_encoder = convnext_large()
-        self.shared_encoder = modify_conv1(self.shared_encoder)
+        super(PNet, self).__init__()
+        self.shared_encoder = pvt_v2_b4()
 
-        self.GCM3 = GCM3([192, 384, 768, 1536], channels)
+        self.GCM3 = GCM3([64, 128, 320, 512], channels)
 
         self.LL_down3 = nn.Sequential(
             BasicConv2d(channels, channels, stride=2, kernel_size=3, padding=1)
@@ -39,13 +28,11 @@ class PANet(nn.Module):
         self.one_conv_f1_hh = ETM(channels * 2, channels)
         self.one_conv_f2_hh = ETM(channels * 2, channels)
 
-        self.GPM = GPM(1536)
+        self.GPM = GPM(512)
         self.decoder = UNetDecoderWithEdges(channels, channels)
         
     def forward(self, data):
-        x1 = data['image']
-        x2 = data['bbox_image']
-        x = torch.cat([x1, x2], 1)
+        x = data['image']
         en_feats = self.shared_encoder(x)
         x1, x2, x3, x4 = en_feats
         LL, LH, HL, HH, f1, f2, f3, f4 = self.GCM3(x1, x2, x3, x4)
@@ -324,7 +311,13 @@ class GPM(nn.Module):
 
 
 if __name__ == '__main__':
-    net = PANet(channels=64).eval()
+    net = Network(channels=64)  # .eval()
+    import thop
+
     x = torch.rand(1, 3, 384, 384)
-    y = torch.rand(1, 3, 384, 384)
-    out = net({'image': x, 'box_image': y})
+
+    flops, params = thop.profile(net, inputs=(x,))
+    from thop import clever_format
+
+    flops, params = clever_format([flops, params], "%.3f")
+    print(flops, params)

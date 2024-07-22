@@ -1,4 +1,5 @@
 import os
+os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8'
 import argparse
 import yaml
 import numpy as np
@@ -22,14 +23,34 @@ def build_model(opt):
     return model
 
 def build_dataloader(opt, dataset_key):
-    dataset = get_dataset(opt, dataset_key)
+    dataset_config = opt['dataset'][dataset_key]
+    
+    if isinstance(dataset_config['image_root'], list):
+        datasets = [get_dataset(opt, {**dataset_config, 'image_root': img_root, 'gt_root': gt_root}) 
+                    for img_root, gt_root in zip(dataset_config['image_root'], dataset_config['gt_root'])]
+        dataset = torch.utils.data.ConcatDataset(datasets)
+    else:
+        dataset = get_dataset(opt, dataset_key)
+    
     dataloader = torch.utils.data.DataLoader(
         dataset=dataset,
-        batch_size=opt['dataloader']['batch_size_val'],
-        num_workers=opt['dataloader']['num_workers'],
-        shuffle=opt['dataloader']['shuffle']
+        batch_size=dataset_config['batch_size'],
+        num_workers=dataset_config['num_workers'],
+        shuffle=dataset_config['shuffle']
     )
     return dataloader
+
+def load_pretrained_weight(model, opt):
+    checkpoint = torch.load(opt, map_location='cpu')
+    new_state_dict = {}
+    for k, v in checkpoint.items():
+        if k.startswith('module.'):
+            new_state_dict[k[7:]] = v
+        else:
+            new_state_dict[k] = v
+    model.load_state_dict(new_state_dict)
+    print(f'Loaded pretrained weight from {opt}')
+    return model
 
 def val(opt):
     seed_torch(opt['seed'])
@@ -38,44 +59,38 @@ def val(opt):
     model = build_model(opt)
     model.to(device)
 
-    if opt['dataset']['test']['load'] is not None and os.path.exists(opt['dataset']['test']['load']):
-        checkpoint = torch.load(opt['dataset']['test']['load'], map_location=device)
-        new_state_dict = {}
-        for k, v in checkpoint.items():
-            if k.startswith('module.'):
-                new_state_dict[k[7:]] = v
-            else:
-                new_state_dict[k] = v
-        model.load_state_dict(new_state_dict)
-        print(f'Loaded checkpoint from {opt['dataset']['test']['load']}')
-
     torch.cuda.empty_cache()
+    load_pretrained_weight(model, opt['dataset']['test']['load'])
+
     model.eval()
 
     with torch.no_grad():
         for key in opt['dataset']:
             if 'test' in key:
-                val_loader = build_dataloader(opt, 'test')
-                save_path = opt['dataset']['test']['save_path']
+                for img_root, gt_root, save_path in zip(opt['dataset']['test']['image_root'], opt['dataset']['test']['gt_root'], opt['dataset']['test']['save_path']):
+                    print(f"Testing on {img_root} dataset")
+                    opt['dataset'][key]['image_root'] = img_root
+                    opt['dataset'][key]['gt_root'] = gt_root
+                    val_loader = build_dataloader(opt, key)
+                    
+                    save_indices = opt['dataset']['test']['save_indices']
+                    save_index_names = opt['dataset']['test']['save_index_names']
+                    pose_process = [globals()[func_name] for func_name in opt['dataset']['test']['pose_process']]
 
-                save_indices = opt['dataset']['test']['save_indices']
-                save_index_names = opt['dataset']['test']['save_index_names']
-                pose_process = [globals()[func_name] for func_name in opt['dataset']['test']['pose_process']]
+                    save_paths = [os.path.join(save_path, name) for name in save_index_names]
+                    for path in save_paths:
+                        if not os.path.exists(path):
+                            os.makedirs(path)
 
-                save_paths = [os.path.join(save_path, name) for name in save_index_names]
-                for path in save_paths:
-                    if not os.path.exists(path):
-                        os.makedirs(path)
-
-                for i, data in tqdm.tqdm(enumerate(val_loader, start=1)):
-                    data = {k: v.to(device) if isinstance(v, torch.Tensor) else v for k, v in data.items()}
-                    outputs = model(data)['res']
-                    for idx, name, path, process_func in zip(save_indices, save_index_names, save_paths, pose_process):
-                        res = outputs[idx]
-                        for j in range(len(res)):
-                            pre_img = process_func(res[j], data, j)
-                            save_file_path = os.path.join(path, data["name"][j].replace('.jpg', '.png'))
-                            cv2.imwrite(save_file_path, pre_img)
+                    for i, data in tqdm.tqdm(enumerate(val_loader, start=1)):
+                        data = {k: v.to(device) if isinstance(v, torch.Tensor) else v for k, v in data.items()}
+                        outputs = model(data)['res']
+                        for idx, name, path, process_func in zip(save_indices, save_index_names, save_paths, pose_process):
+                            res = outputs[idx]
+                            for j in range(len(res)):
+                                pre_img = process_func(res[j], data, j)
+                                save_file_path = os.path.join(path, data["name"][j].replace('.jpg', '.png'))
+                                cv2.imwrite(save_file_path, pre_img)
 
 def main():
     parser = argparse.ArgumentParser(description='Testing configuration')

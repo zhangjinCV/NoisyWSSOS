@@ -17,8 +17,8 @@ dataset:
     istraining: true
   val:
     type: 'COSwithNoBox'
-    image_root: '/mnt/jixie16t/dataset/COD/CHAMELEON_TestingDataset/image/'
-    gt_root: '/mnt/jixie16t/dataset/COD/CHAMELEON_TestingDataset/mask/'
+    image_root: '/mnt/jixie16t/dataset/COD/CAMO/image/'
+    gt_root: '/mnt/jixie16t/dataset/COD/CAMO/mask/'
     trainsize: 384
     istraining: false
   test:
@@ -27,37 +27,33 @@ dataset:
     gt_root: ['/mnt/jixie16t/dataset/COD/CHAMELEON_TestingDataset/mask/', '/mnt/jixie16t/dataset/COD/CAMO/mask/', '/mnt/jixie16t/dataset/COD/COD10K/mask/', '/mnt/jixie16t/dataset/COD/NC4K/mask/']
     trainsize: 384
     istraining: false
-    save_path: ['/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/data/PNets/UNet_20_ncloss/CHAMELEON_TestingDataset', '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/data/PNets/UNet_20_ncloss/CAMO', '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/data/PNets/UNet_20_ncloss/COD10K', '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/data/PNets/UNet_20_ncloss/NC4K']
-    load: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/UNet/20%_with_ncloss/model_best.pth'
-    save_indices: [0]
+    save_path: ['/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/data/PNets/PNet_20_ncloss/CHAMELEON_TestingDataset', '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/data/PNets/PNet_20_ncloss/CAMO', '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/data/PNets/PNet_20_ncloss/COD10K', '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/data/PNets/PNet_20_ncloss/NC4K']
+    load: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/PNet/20%_with_ncloss/model_best.pth'
+    save_indices: [4]
     save_index_names: ['']
     pose_process: ['tensor_pose_processing_mask']
 
 dataloader:
-  batch_size: 32
+  batch_size: 30
   num_workers: 6
   batch_size_val: 64
   shuffle: true
 
 optimizer:
-  type: 'AdamW'
+  type: 'Adam'
   params:
-    lr: 0.0001
-    betas: [0.9, 0.999]
-    eps: 0.00000001
-    weight_decay: 0.01
-    amsgrad: False
+    lr: 0.0004
 
 scheduler:
   type: 'LinearCosineAnnealingLR'
   params:
     max_lr: 0.0004
     min_lr: 0.0000004
-    warmup_epochs: 10
+    warmup_epochs: 5
     total_epochs: 100
 
 model:
-  name: 'UNetResNet50'
+  name: 'PNet'
 
 training:
   epochs: 100
@@ -70,11 +66,43 @@ training:
   val_step: 1
   MASTER_ADDR: 'localhost'
   MASTER_PORT: '12355'
-  save_path: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/UNet/20%_with_ncloss/'
-  grad_accum: 1
-  main_output_index: 0
+  save_path: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/PNet/20%_with_ncloss/'
+  find_unused_parameters: true
+  main_output_index: 4
   losses:
     loss1:
-      type: ['NCLoss', 'UALoss']
+      type: ['NCLoss']
       gt_input: ["gt"]
+      coef: [0.0625]
+    loss2:
+      type: ['NCLoss']
+      gt_input: ["gt"]
+      coef: [0.125]
+    loss3:
+      type: ['NCLoss']
+      gt_input: ["gt"]
+      coef: [0.25]
+    loss4:
+      type: ['NCLoss']
+      gt_input: ["gt"]
+      coef: [0.5]
+    loss5:
+      type: ['NCLoss', 'UALoss']
+      gt_input: ["gt", "gt"]
       coef: [1, 2]
+    loss6:
+      type: ['DiceLoss']
+      gt_input: ["edge"]
+      coef: [0]
+    loss7:
+      type: ['DiceLoss']
+      gt_input: ["edge"]
+      coef: [0.125]
+    loss8:
+      type: ['DiceLoss']
+      gt_input: ["edge"]
+      coef: [0.25]
+    loss9:
+      type: ['DiceLoss']
+      gt_input: ["edge"]
+      coef: [0.5]

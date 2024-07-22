@@ -7,16 +7,16 @@ dataset:
     type: 'COSwithBox'
     image_root: '/mnt/jixie16t/dataset/LVIS/image/'
     gt_root: '/mnt/jixie16t/dataset/LVIS/mask_coconut/'
-    trainsize: 288
+    trainsize: 224
     istraining: true
-    batch_size: 96
-    num_workers: 12
+    batch_size: 128
+    num_workers: 8
     shuffle: true
   val:
     type: 'COSwithBox'
     image_root: '/mnt/jixie16t/dataset/COD/LabelNoiseTrainDataset/CAMO_COD_generate_80%/image/'
     gt_root: '/mnt/jixie16t/dataset/COD/LabelNoiseTrainDataset/CAMO_COD_generate_80%/mask/'
-    trainsize: 288
+    trainsize: 224
     istraining: false
     batch_size: 64
     num_workers: 6
@@ -36,8 +36,7 @@ scheduler:
     total_epochs: 200
 
 model:
-  name: 'PANet'
-  channels: 64
+  name: 'UNet'
 
 training:
   epochs: 200
@@ -50,43 +49,11 @@ training:
   val_step: 5
   MASTER_ADDR: 'localhost'
   MASTER_PORT: '12355'
-  save_path: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/PANet/LVIS/'
+  save_path: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/PANet/LVISUNet/'
   find_unused_parameters: false
-  main_output_index: 4
+  main_output_index: 0
   losses:
     loss1:
-      type: ['StructureLoss']
-      gt_input: ["gt"]
-      coef: [0.0625]
-    loss2:
-      type: ['StructureLoss']
-      gt_input: ["gt"]
-      coef: [0.125]
-    loss3:
-      type: ['StructureLoss']
-      gt_input: ["gt"]
-      coef: [0.25]
-    loss4:
-      type: ['StructureLoss']
-      gt_input: ["gt"]
-      coef: [0.5]
-    loss5:
       type: ['StructureLoss', 'UALoss']
       gt_input: ["gt", 'gt']
       coef: [1, 2]
-    loss6:
-      type: ['DiceLoss']
-      gt_input: ["edge"]
-      coef: [0]
-    loss7:
-      type: ['DiceLoss']
-      gt_input: ["edge"]
-      coef: [0.5]
-    loss8:
-      type: ['DiceLoss']
-      gt_input: ["edge"]
-      coef: [1]
-    loss9:
-      type: ['DiceLoss']
-      gt_input: ["edge"]
-      coef: [2]
