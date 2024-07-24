@@ -184,7 +184,7 @@ class COSwithNoBox(data.Dataset):
         return self.size
 
 class COSwithBox(data.Dataset):
-    def __init__(self, image_root, gt_root, trainsize, istraining=True):
+    def __init__(self, image_root, gt_root, trainsize, istraining=True, repeat=1):
         self.trainsize = trainsize
         self.istraining = istraining
         self.gts = [gt_root + f for f in os.listdir(gt_root) if f.endswith('.png')]

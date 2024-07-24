@@ -28,7 +28,8 @@ from models.losses import *
 import json 
 
 def build_model(opt):
-    model = globals()[opt['model']['name']]()
+    params = opt['model']['params']
+    model = globals()[opt['model']['name']](**params)
     return model
 
 def build_optimizer(opt, model):
@@ -54,7 +55,8 @@ def build_dataloader(opt, dataset_key, world_size=None, rank=None):
             dataset=dataset, 
             batch_size=dataset_config['batch_size'], 
             num_workers=dataset_config['num_workers'], 
-            sampler=sampler
+            sampler=sampler,
+            drop_last=True
         )
         return dataloader, sampler
     else:
@@ -111,7 +113,7 @@ def loss_computation(logits_list, targets, edges, losses, data, opt):
     return loss_list
 
 def train(rank, world_size, opt):
-    seed_torch(2024 + rank)
+    seed_torch(opt['seed'] + rank)
     dist.init_process_group(backend='nccl', init_method='env://', world_size=world_size, rank=rank)
     torch.cuda.set_device(rank)
     device = torch.device(f'cuda:{rank}')

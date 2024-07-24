@@ -5,6 +5,18 @@ import torchvision.models as models
 # from losses import structure_loss, NCLoss
 
 
+class UPM(nn.Module):
+    def __init__(self, in_channels=64):
+        super(UPM, self).__init__()
+        self.final_conv = nn.Conv2d(in_channels, 1, 3, 1, 1)
+
+    def forward(self, x):
+        pre = self.final_conv(x).sigmoid()
+        uncentary_region = 1 - (2 * pre - 1).abs().pow(2)
+
+        return x
+
+
 class UNetResNet50(nn.Module):
     def __init__(self, n_classes=1):
         super(UNetResNet50, self).__init__()

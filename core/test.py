@@ -19,7 +19,8 @@ from torch.cuda.amp import autocast
 from datasets.dataset import get_dataset
 
 def build_model(opt):
-    model = globals()[opt['model']['name']]()
+    params = opt['model']['params']
+    model = globals()[opt['model']['name']](**params)
     return model
 
 def build_dataloader(opt, dataset_key):

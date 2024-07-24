@@ -24,3 +24,7 @@ PNet_20_ncloss CAMO &  0.044  &  0.931  &  0.856  &  0.870
 PNet_20_ncloss CHAMELEON_TestingDataset &  0.026  &  0.953  &  0.852  &  0.888
 PNet_20_ncloss COD10K &  0.023  &  0.933  &  0.795  &  0.863
 PNet_20_ncloss NC4K &  0.031  &  0.938  &  0.855  &  0.885
+PNet_20_ncloss CAMO &  0.075  &  0.860  &  0.763  &  0.790
+PNet_20_ncloss CHAMELEON_TestingDataset &  0.031  &  0.931  &  0.804  &  0.864
+PNet_20_ncloss COD10K &  0.033  &  0.891  &  0.723  &  0.817
+PNet_20_ncloss NC4K &  0.043  &  0.909  &  0.808  &  0.849

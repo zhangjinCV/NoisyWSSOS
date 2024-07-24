@@ -3,14 +3,24 @@ import torch
 import torch.nn.functional as F
 from .pvtv2 import pvt_v2_b4
 from .losses import UALoss, NCLoss, DiceLoss
+from timm import create_model
 
 
 class PNet(nn.Module):
-    def __init__(self, channels=64):
+    def __init__(self, backbone='pvt', channels=64):
         super(PNet, self).__init__()
-        self.shared_encoder = pvt_v2_b4()
-
-        self.GCM3 = GCM3([64, 128, 320, 512], channels)
+        if backbone == 'pvt':
+            self.shared_encoder = pvt_v2_b4()
+            dims = [64, 128, 320, 512]
+        elif backbone == 'resnet':
+            self.shared_encoder = create_model('resnet50', pretrained=True, features_only=True)
+            dims = [256, 512, 1024, 2048]
+        elif backbone == 'res2net':
+            self.shared_encoder = create_model('res2net50_26w_8s', pretrained=True, features_only=True)
+            dims = [256, 512, 1024, 2048]
+        else:
+            raise ValueError('Unknown backbone')
+        self.GCM3 = GCM3(dims, channels)
 
         self.LL_down3 = nn.Sequential(
             BasicConv2d(channels, channels, stride=2, kernel_size=3, padding=1)
@@ -28,13 +38,14 @@ class PNet(nn.Module):
         self.one_conv_f1_hh = ETM(channels * 2, channels)
         self.one_conv_f2_hh = ETM(channels * 2, channels)
 
-        self.GPM = GPM(512)
+        self.GPM = GPM(dims[-1])
         self.decoder = UNetDecoderWithEdges(channels, channels)
         
+
     def forward(self, data):
         x = data['image']
         en_feats = self.shared_encoder(x)
-        x1, x2, x3, x4 = en_feats
+        x1, x2, x3, x4 = en_feats[-4:]
         LL, LH, HL, HH, f1, f2, f3, f4 = self.GCM3(x1, x2, x3, x4)
 
         HH_up = self.dePixelShuffle(HH)
@@ -265,7 +276,7 @@ class GCM3(nn.Module):
 
 
 class GPM(nn.Module):
-    def __init__(self, in_c=128, dilation_series=[6, 12, 18], padding_series=[6, 12, 18], depth=128):
+    def __init__(self, in_c=128, dilation_series=[6, 12, 18], padding_series=[6, 12, 18], depth=256):
         super(GPM, self).__init__()
         self.branch_main = nn.Sequential(
             nn.AdaptiveAvgPool2d((1, 1)),

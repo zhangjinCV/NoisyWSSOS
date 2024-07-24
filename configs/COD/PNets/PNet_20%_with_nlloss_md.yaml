@@ -60,6 +60,9 @@ scheduler:
 
 model:
   name: 'PNet'
+  params:
+    backbone: 'resnet'
+    channels: 64
 
 training:
   epochs: 100

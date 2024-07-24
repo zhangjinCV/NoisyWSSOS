@@ -121,7 +121,7 @@ def setup_process_groups():
     return process_groups
 
 
-def seed_torch(seed=2024):
+def seed_torch(seed=42):
     random.seed(seed)
     os.environ['PYTHONHASHSEED'] = str(seed)  # 为了禁止hash随机化，使得实验可复现
     np.random.seed(seed)
@@ -130,7 +130,7 @@ def seed_torch(seed=2024):
     torch.cuda.manual_seed_all(seed)  # if you are using multi-GPU.
     torch.backends.cudnn.benchmark = False
     torch.backends.cudnn.deterministic = True
-    torch.use_deterministic_algorithms(True)
+    # torch.use_deterministic_algorithms(True)
 
 
 
