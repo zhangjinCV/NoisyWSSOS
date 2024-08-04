@@ -10,7 +10,7 @@ import sys
 import cv2
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from models import *
-from utils import seed_torch, denormalize, tensor_pose_processing_mask, tensor_pose_processing_edge
+from utils import seed_torch, denormalize, tensor_pose_processing_mask, tensor_pose_processing_edge, tensor_pose_processing_inpainting
 from torch.utils.data import DataLoader
 from torchvision.utils import make_grid
 import logging
@@ -27,11 +27,11 @@ def build_dataloader(opt, dataset_key):
     dataset_config = opt['dataset'][dataset_key]
     
     if isinstance(dataset_config['image_root'], list):
-        datasets = [get_dataset(opt, {**dataset_config, 'image_root': img_root, 'gt_root': gt_root}) 
-                    for img_root, gt_root in zip(dataset_config['image_root'], dataset_config['gt_root'])]
+        datasets = [get_dataset({**dataset_config, 'image_root': img_root, 'gt_root': gt_root, 'file_list': file_list}) 
+                    for img_root, gt_root, file_list in zip(dataset_config['image_root'], dataset_config['gt_root'], dataset_config['file_list'])]
         dataset = torch.utils.data.ConcatDataset(datasets)
     else:
-        dataset = get_dataset(opt, dataset_key)
+        dataset = get_dataset(dataset_config)
     
     dataloader = torch.utils.data.DataLoader(
         dataset=dataset,
@@ -42,7 +42,7 @@ def build_dataloader(opt, dataset_key):
     return dataloader
 
 def load_pretrained_weight(model, opt):
-    checkpoint = torch.load(opt, map_location='cpu')
+    checkpoint = torch.load(opt, map_location='cpu')['model']
     new_state_dict = {}
     for k, v in checkpoint.items():
         if k.startswith('module.'):
@@ -68,10 +68,11 @@ def val(opt):
     with torch.no_grad():
         for key in opt['dataset']:
             if 'test' in key:
-                for img_root, gt_root, save_path in zip(opt['dataset']['test']['image_root'], opt['dataset']['test']['gt_root'], opt['dataset']['test']['save_path']):
+                for img_root, gt_root, file_list, save_path in zip(opt['dataset']['test']['image_root'], opt['dataset']['test']['gt_root'], opt['dataset']['test']['file_list'], opt['dataset']['test']['save_path']):
                     print(f"Testing on {img_root} dataset")
                     opt['dataset'][key]['image_root'] = img_root
                     opt['dataset'][key]['gt_root'] = gt_root
+                    opt['dataset'][key]['file_list'] = file_list
                     val_loader = build_dataloader(opt, key)
                     
                     save_indices = opt['dataset']['test']['save_indices']

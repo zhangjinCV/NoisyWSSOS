@@ -187,9 +187,5 @@ def convnext_large(pretrained=False, in_22k=False, **kwargs):
 
 def convnext_xlarge(pretrained=False, in_22k=False, **kwargs):
     model = ConvNeXt(depths=[3, 3, 27, 3], dims=[256, 512, 1024, 2048], **kwargs)
-    if pretrained:
-        assert in_22k, "only ImageNet-22K pre-trained ConvNeXt-XL is available; please set in_22k=True"
-        url = model_urls['convnext_xlarge_22k']
-        checkpoint = torch.hub.load_state_dict_from_url(url=url, map_location="cpu")
-        model.load_state_dict(checkpoint["model"])
+    model.load_state_dict(torch.load("/mnt/jixie16t/dataset/imagenet_pretrained_weight/ConvNeXt/convnext_xlarge_22k_1k_384_ema.pth")['model'], strict=False)
     return model

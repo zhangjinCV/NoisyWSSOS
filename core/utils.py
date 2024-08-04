@@ -8,6 +8,8 @@ import os
 from torch.nn import functional as F
 from torch import nn
 from torch.optim.lr_scheduler import _LRScheduler
+import albumentations as A
+import tqdm, glob, cv2
 
 
 class LinearCosineAnnealingLR(_LRScheduler):
@@ -57,6 +59,17 @@ def tensor_pose_processing_edge(tensor, data, j):
     np_one = tensor.astype(np.uint8)
     return np_one
 
+def tensor_pose_processing_inpainting(tensor, data, j):
+    tensor = torch.clamp(tensor, 0, 1)
+    if len(tensor.shape) == 3:
+        tensor = tensor.unsqueeze(0)
+    tensor = F.interpolate(tensor, size=(data['W'][j].item(), data['H'][j].item()), mode='bilinear')
+    tensor = tensor.cpu().squeeze().numpy() * 255
+    np_one = tensor.astype(np.uint8)
+    np_one = np_one.transpose(1, 2, 0)
+    np_one = cv2.cvtColor(np_one, cv2.COLOR_RGB2BGR)
+    return np_one
+
 def save_checkpoint(model, optimizer, scheduler, epoch, path, opt):
     save_iter = opt['save_iter']
     if epoch % save_iter == 0:
@@ -103,7 +116,6 @@ def save_weight(model, epoch, path, opt):
             print('Model removed at {}'.format(path + '/epoch_{}.pth'.format(pth)))
 
 
-
 def denormalize(tensor, mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]):
     for t, m, s in zip(tensor, mean, std):
         t.mul_(s).add_(m)
@@ -130,8 +142,6 @@ def seed_torch(seed=42):
     torch.cuda.manual_seed_all(seed)  # if you are using multi-GPU.
     torch.backends.cudnn.benchmark = False
     torch.backends.cudnn.deterministic = True
-    # torch.use_deterministic_algorithms(True)
-
 
 
 def get_coef(iter_percentage, method):
@@ -242,3 +252,41 @@ def CalParams(model, input_tensor):
     flops, params = clever_format([flops, params], "%.3f")
     print('[Statistics Information]\nFLOPs: {}\nParams: {}'.format(flops, params))
 
+from PIL import Image
+
+
+def augment_image_and_mask(mask_path):
+    mask = np.array(Image.open(mask_path).convert('L'))
+
+    aug = A.Compose([
+        A.HorizontalFlip(p=1),
+        A.VerticalFlip(p=1),
+        # A.Flip(p=1),
+    ], additional_targets={'mask': 'mask'})
+
+    augmented = aug(mask=mask, image=mask)
+
+    mask = augmented['mask']
+
+    mask = Image.fromarray(mask)
+
+    return mask
+
+
+def random_generate_trainset(txt_file, rate=0.2):
+    seed_torch()
+    with open(txt_file, 'r') as f:
+        lines = f.readlines()
+    lines = [i for i in lines if i != '']
+    random.shuffle(lines)
+    train_num = int(len(lines) * rate)
+    train_lines = lines[:train_num]
+    test_lines = lines[train_num:]
+    with open(txt_file.replace('.txt', f'_train_{rate * 100}%.txt'), 'w') as f:
+        f.writelines(train_lines)
+    with open(txt_file.replace('.txt', f'_generate_{100 - rate * 100}%.txt'), 'w') as f:
+        f.writelines(test_lines)
+
+
+if __name__ == '__main__':
+    random_generate_trainset("/mnt/jixie16t/dataset/COD/CAMO_COD_train/namelist.txt", rate=0.1)

@@ -2,7 +2,68 @@ import torch
 from torch import nn 
 import numpy as np 
 from torch.nn import functional as F
+from pytorch_msssim import ssim, SSIM, MS_SSIM
+from torchvision import models
 
+
+class L1Loss(nn.Module):
+    def __init__(self):
+        super(L1Loss, self).__init__()
+
+    def forward(self, pred, target, box):
+        pred = torch.clamp(pred, 0, 1) * 255. 
+        target = target * 255. 
+        l1 = F.mse_loss(pred, target, reduction='none')
+        l1 = torch.mean(l1, dim=(1, 2, 3), keepdim=False)
+
+        l2 = F.l1_loss(pred, target, reduction='none')
+        l2 = torch.mean(l2, dim=(1, 2, 3), keepdim=False)
+        return l1 + l2
+
+
+class GradientLoss(nn.Module):
+    def __init__(self):
+        super(GradientLoss, self).__init__()
+        
+    def forward(self, pred, target, box):
+        # 计算水平方向梯度
+        pred = torch.clamp(pred, 0, 1)  * 255.
+        target = target * 255.
+        grad_pred_x = pred[:, :, :, :-1] - pred[:, :, :, 1:]
+        grad_target_x = target[:, :, :, :-1] - target[:, :, :, 1:]
+        
+        # 计算垂直方向梯度
+        grad_pred_y = pred[:, :, :-1, :] - pred[:, :, 1:, :]
+        grad_target_y = target[:, :, :-1, :] - target[:, :, 1:, :]
+        
+        # 计算梯度损失
+        loss_x_l1 = F.l1_loss(grad_pred_x, grad_target_x, reduction='none')
+        loss_x_l1 = torch.mean(loss_x_l1, dim=(1, 2, 3), keepdim=False)
+        loss_y_l1 = F.l1_loss(grad_pred_y, grad_target_y, reduction='none')
+        loss_y_l1 = torch.mean(loss_y_l1, dim=(1, 2, 3), keepdim=False)
+
+        loss_x_l2 = F.mse_loss(grad_pred_x, grad_target_x, reduction='none')
+        loss_x_l2 = torch.mean(loss_x_l2, dim=(1, 2, 3), keepdim=False)
+        loss_y_l2 = F.mse_loss(grad_pred_y, grad_target_y, reduction='none')
+        loss_y_l2 = torch.mean(loss_y_l2, dim=(1, 2, 3), keepdim=False)
+        return loss_x_l1 + loss_y_l1 + loss_x_l2 + loss_y_l2
+
+class PerceptualLoss(nn.Module):
+    def __init__(self, feature_layer=11):
+        super(PerceptualLoss, self).__init__()
+        vgg = models.vgg19(pretrained=True).features.cuda()
+        self.features = nn.Sequential(*list(vgg.children())[:feature_layer]).cuda()
+        for param in self.features.parameters():
+            param.requires_grad = False
+    
+    def forward(self, pred, target, box):
+        pred = torch.clamp(pred, 0, 1)
+        l1 = F.mse_loss(pred, target, reduction='none')
+        l1 = torch.mean(l1, dim=(1, 2, 3), keepdim=False)
+
+        l2 = F.l1_loss(pred, target, reduction='none')
+        l2 = torch.mean(l2, dim=(1, 2, 3), keepdim=False)
+        return l1 + l2
 
 
 class UALoss(nn.Module):
@@ -35,7 +96,8 @@ class UALoss(nn.Module):
         ual_coef = self.get_coef(iter_percentage)
         sigmoid_x = seg_logits.sigmoid()
         loss_map = 1 - (2 * sigmoid_x - 1).abs().pow(2)
-        return loss_map.mean() * ual_coef
+        loss_map = torch.mean(loss_map, dim=(1, 2, 3), keepdim=False)
+        return loss_map * ual_coef
 
 
 class StructureLoss(nn.Module):
@@ -45,13 +107,13 @@ class StructureLoss(nn.Module):
     def forward(self, pred, mask):
         weit = 1 + 5 * torch.abs(F.avg_pool2d(mask, kernel_size=31, stride=1, padding=15) - mask)
         wbce = F.binary_cross_entropy_with_logits(pred, mask, reduction='none')
-        wbce = (weit * wbce).sum(dim=(2, 3)) / weit.sum(dim=(2, 3))
+        wbce = (weit * wbce).sum(dim=(1, 2, 3)) / weit.sum(dim=(1, 2, 3))
 
         pred = torch.sigmoid(pred)
-        inter = ((pred * mask) * weit).sum(dim=(2, 3))
-        union = ((pred + mask) * weit).sum(dim=(2, 3))
+        inter = ((pred * mask) * weit).sum(dim=(1, 2, 3))
+        union = ((pred + mask) * weit).sum(dim=(1, 2, 3))
         wiou = 1 - (inter + 1) / (union - inter + 1)
-        return (wbce + wiou).mean()
+        return wbce + wiou 
 
 
 class NCLoss(nn.Module):
@@ -61,8 +123,8 @@ class NCLoss(nn.Module):
     def wbce_loss(self, preds, targets):
         weit = 1 + 5 * torch.abs(F.avg_pool2d(targets, kernel_size=31, stride=1, padding=15) - targets)
         wbce = F.binary_cross_entropy_with_logits(preds, targets, reduce='none')
-        wbce = (weit * wbce).sum(dim=(2, 3)) / weit.sum(dim=(2, 3))
-        return wbce.mean()
+        wbce = (weit * wbce).sum(dim=(1, 2, 3)) / weit.sum(dim=(1, 2, 3))
+        return wbce
 
     def forward(self, preds, targets, q):
         wbce = self.wbce_loss(preds, targets)
@@ -74,10 +136,9 @@ class NCLoss(nn.Module):
         denominator = torch.sum(preds_flat, dim=1) + torch.sum(targets_flat, dim=1) - intersection + 1e-8
         loss = numerator / denominator
         if q == 2:
-            return loss.mean() + wbce
+            return loss + wbce
         if q == 1:
-            return loss.mean() * 2
-
+            return loss * 2
 
 class DiceLoss(nn.Module):
     def __init__(self):
@@ -93,5 +154,4 @@ class DiceLoss(nn.Module):
         num = torch.sum(torch.mul(predict, target) * valid_mask, dim=1) * 2 + smooth
         den = torch.sum((predict.pow(p) + target.pow(p)) * valid_mask, dim=1) + smooth
         loss = 1 - num / den
-        return loss.mean()
-
+        return loss

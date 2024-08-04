@@ -39,11 +39,30 @@ aug = A.Compose([
     A.Emboss(p=0.5),
     A.Posterize(p=0.5),
     A.Perspective(p=0.5)
-], additional_targets={'image2': 'image', 'mask': 'mask', 'edge': 'mask'})
+], additional_targets={'image2': 'image', 'mask': 'mask', 'edge': 'mask', 'mask2': 'mask', 'mask3': 'mask'})
 
+aug2 = A.Compose([
+    #A.ColorJitter(0.3, 0.3, 0.3),
+    A.HorizontalFlip(p=1),
+    A.VerticalFlip(p=1),
+    A.Flip(p=1),
+    A.Transpose(p=0.5),
+    A.GaussNoise(p=0.5),
+    A.Blur(p=0.5),
+    A.ShiftScaleRotate(rotate_limit=30),
+    # A.ToGray(p=0.2),
+    # A.Emboss(p=0.5),
+    # A.Posterize(p=0.5),
+    # A.Perspective(p=0.5)
+], additional_targets={'image2': 'image', 'mask': 'mask', 'edge': 'mask', 'mask2': 'mask', 'mask3': 'mask'})
+
+def read_filenames(txt_file):
+    with open(txt_file, 'r') as f:
+        filenames = f.read().splitlines()
+    return filenames
 
 class LVISDataset(data.Dataset):
-    def __init__(self, image_root, gt_root, json_path='/mnt/jixie16t/dataset/LVIS/lvis_v1_train.json', trainsize=384, istraining=True):
+    def __init__(self, image_root, gt_root, file_list, json_path='/mnt/jixie16t/dataset/LVIS/lvis_v1_train.json', trainsize=384, istraining=True):
         self.trainsize = trainsize
         self.istraining = istraining
         self.image_root = image_root
@@ -52,7 +71,7 @@ class LVISDataset(data.Dataset):
         with open(json_path, 'r') as f:
             self.annotations = json.load(f)
         
-        self.images = glob.glob(image_root + '/*.jpg')
+        self.images = [os.path.join(image_root, fname) for fname in read_filenames(file_list)]
         self.gts = [i.replace(image_root, gt_root).replace('.jpg', '.png').replace("_coconut", "") for i in self.images]
         
         self.img_transform = transforms.Compose([
@@ -79,6 +98,12 @@ class LVISDataset(data.Dataset):
             image, bbox_image, gt = np.array(image).astype(np.uint8), np.array(bbox_image).astype(
                 np.uint8), np.array(gt).astype(np.uint8)
             augmented = aug(image=image, image2=bbox_image, mask=gt)
+            image, bbox_image, gt = augmented['image'], augmented['image2'], augmented['mask']
+            image, bbox_image, gt = Image.fromarray(image), Image.fromarray(bbox_image), Image.fromarray(gt)
+        else:
+            image, bbox_image, gt = np.array(image).astype(np.uint8), np.array(bbox_image).astype(
+                np.uint8), np.array(gt).astype(np.uint8)
+            augmented = aug2(image=image, image2=bbox_image, mask=gt)
             image, bbox_image, gt = augmented['image'], augmented['image2'], augmented['mask']
             image, bbox_image, gt = Image.fromarray(image), Image.fromarray(bbox_image), Image.fromarray(gt)
         image = self.img_transform(image)
@@ -122,12 +147,63 @@ class LVISDataset(data.Dataset):
         return self.size
 
 
-class COSwithNoBox(data.Dataset):
-    def __init__(self, image_root, gt_root, trainsize, istraining=True, repeat=1):
+class ImageInpainting(data.Dataset):
+    def __init__(self, image_root, gt_root, file_list, trainsize, istraining=True, repeat=1, **kwargs):
         self.trainsize = trainsize
         self.istraining = istraining
-        self.images = [image_root + f for f in os.listdir(image_root) if f.endswith('.jpg')] * repeat
-        self.gts = [i.replace("image", "mask").replace(".jpg", ".png") for i in self.images] * repeat
+        box_root = gt_root
+        self.images = [os.path.join(image_root, fname) for fname in read_filenames(file_list)] * repeat
+        self.boxes = [os.path.join(box_root, fname.replace('.jpg', '.png')) for fname in read_filenames(file_list)] * repeat
+
+        self.images = np.array(sorted(self.images))
+        self.boxes = np.array(sorted(self.boxes))
+    
+        self.img_transform = transforms.Compose([
+            transforms.Resize((self.trainsize, self.trainsize)),
+            transforms.ToTensor()
+        ])
+        self.box_transform = transforms.Compose([
+            transforms.Resize((self.trainsize, self.trainsize)),
+            transforms.ToTensor()
+        ])
+        self.size = len(self.images)
+
+    def __getitem__(self, index):
+        image = self.rgb_loader(self.images[index])
+        name = os.path.basename(self.images[index])
+        box = self.binary_loader(self.boxes[index])
+        H, W = image.size
+        if self.istraining:
+            image, box = np.array(image).astype(np.uint8), np.array(box).astype(np.uint8)
+            # augmented = aug2(image=image, mask=box)
+            # image, box = augmented['image'], augmented['mask']
+            box = np.where(box > 0.2 * 255, 255, 0).astype(np.uint8)
+            image, box = Image.fromarray(image),  Image.fromarray(box)
+        image = self.img_transform(image)
+        box = self.box_transform(box)
+        dest = image * box
+        return {'image': dest, 'gt': image, 'box': box, 'H': H, 'W': W, 'name': name}
+
+    def rgb_loader(self, path):
+        with open(path, 'rb') as f:
+            img = Image.open(f)
+            return img.convert('RGB')
+
+    def binary_loader(self, path):
+        with open(path, 'rb') as f:
+            img = Image.open(f)
+            return img.convert('L')
+
+    def __len__(self):
+        return self.size
+
+
+class COSwithNoBox(data.Dataset):
+    def __init__(self, image_root, gt_root, file_list, trainsize, istraining=True, repeat=1, **kwargs):
+        self.trainsize = trainsize
+        self.istraining = istraining
+        self.images = [os.path.join(image_root, fname) for fname in read_filenames(file_list)] * repeat
+        self.gts = [os.path.join(gt_root, fname.replace('.jpg', '.png')) for fname in read_filenames(file_list)] * repeat
         self.edges = [i.replace("mask", "edge") for i in self.gts] * repeat
 
         if self.istraining:
@@ -166,7 +242,7 @@ class COSwithNoBox(data.Dataset):
         gt = self.gt_transform(gt)
         if self.istraining:
             edge = self.gt_transform(edge)
-            return {'image': image, 'gt': gt, 'edge': edge, 'H': H, 'W': W}
+            return {'image': image, 'gt': gt, 'edge': edge, 'H': H, 'W': W, 'name': name}
         else:
             return {'image': image, 'gt': gt, 'H': H, 'W': W, 'name': name}
 
@@ -183,12 +259,85 @@ class COSwithNoBox(data.Dataset):
     def __len__(self):
         return self.size
 
-class COSwithBox(data.Dataset):
-    def __init__(self, image_root, gt_root, trainsize, istraining=True, repeat=1):
+
+class COSwithNoBoxML(data.Dataset):
+    def __init__(self, image_root, gt_root, gt_root2, gt_root3, file_list, trainsize, istraining=True, repeat=1, **kwargs):
         self.trainsize = trainsize
         self.istraining = istraining
-        self.gts = [gt_root + f for f in os.listdir(gt_root) if f.endswith('.png')]
-        self.images = [image_root + f for f in os.listdir(image_root) if f.endswith('.jpg')]
+        self.images = [os.path.join(image_root, fname) for fname in read_filenames(file_list)] * repeat
+        self.gts = [os.path.join(gt_root, fname.replace('.jpg', '.png')) for fname in read_filenames(file_list)] * repeat
+        self.gts2 = [os.path.join(gt_root2, fname.replace('.jpg', '.png')) for fname in read_filenames(file_list)] * repeat
+        self.gts3 = [os.path.join(gt_root3, fname.replace('.jpg', '.png')) for fname in read_filenames(file_list)] * repeat
+        self.edges = [i.replace("mask", "edge") for i in self.gts] * repeat
+
+        if self.istraining:
+            self.images = np.array(sorted(self.images))
+            self.gts = np.array(sorted(self.gts))
+            self.gts2 = np.array(sorted(self.gts2))
+            self.gts3 = np.array(sorted(self.gts3))
+            self.edges = np.array(sorted(self.edges))
+        else:
+            self.images = np.array(sorted(self.images))
+            self.gts = np.array(sorted(self.gts))
+
+        self.img_transform = transforms.Compose([
+            transforms.Resize((self.trainsize, self.trainsize)),
+            transforms.ToTensor(),
+            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        ])
+        self.gt_transform = transforms.Compose([
+            transforms.Resize((self.trainsize, self.trainsize)),
+            transforms.ToTensor()
+        ])
+        self.size = len(self.images)
+
+    def __getitem__(self, index):
+        image = self.rgb_loader(self.images[index])
+        name = os.path.basename(self.images[index])
+        gt = self.binary_loader(self.gts[index])
+        H, W = image.size
+        if self.istraining:
+            gt2 = self.binary_loader(self.gts2[index])
+            gt3 = self.binary_loader(self.gts3[index])
+            edge = self.binary_loader(self.edges[index])
+            image, gt, gt2, gt3, edge = np.array(image).astype(np.uint8), np.array(gt).astype(np.uint8), np.array(gt2).astype(np.uint8), np.array(gt3).astype(np.uint8), np.array(edge).astype(np.uint8)
+            augmented = aug(image=image, mask=gt, mask2=gt2, mask3=gt3, edge=edge)
+            image, gt, gt2, gt3, edge = augmented['image'], augmented['mask'], augmented['mask2'], augmented['mask3'], augmented['edge']
+            gt = np.where(gt > 0.2 * 255, 255, 0).astype(np.uint8)
+            gt2 = np.where(gt2 > 0.2 * 255, 255, 0).astype(np.uint8)
+            gt3 = np.where(gt3 > 0.2 * 255, 255, 0).astype(np.uint8)
+            edge = np.where(edge > 0.2 * 255, 255, 0).astype(np.uint8)
+            image, gt, gt2, gt3, edge = Image.fromarray(image),  Image.fromarray(gt), Image.fromarray(gt2), Image.fromarray(gt3), Image.fromarray(edge)
+        image = self.img_transform(image)
+        gt = self.gt_transform(gt)
+        if self.istraining:
+            edge = self.gt_transform(edge)
+            gt2 = self.gt_transform(gt2)
+            gt3 = self.gt_transform(gt3)
+            return {'image': image, 'gt': gt, 'gt2': gt2, 'gt3': gt3, 'edge': edge, 'H': H, 'W': W, 'name': name}
+        else:
+            return {'image': image, 'gt': gt, 'H': H, 'W': W, 'name': name}
+
+    def rgb_loader(self, path):
+        with open(path, 'rb') as f:
+            img = Image.open(f)
+            return img.convert('RGB')
+
+    def binary_loader(self, path):
+        with open(path, 'rb') as f:
+            img = Image.open(f)
+            return img.convert('L')
+
+    def __len__(self):
+        return self.size
+
+
+class COSwithBox(data.Dataset):
+    def __init__(self, image_root, gt_root, file_list, trainsize, istraining=True, repeat=1, **kwargs):
+        self.trainsize = trainsize
+        self.istraining = istraining
+        self.gts = [os.path.join(gt_root, fname.replace('.jpg', '.png')) for fname in read_filenames(file_list)]
+        self.images = [os.path.join(image_root, fname) for fname in read_filenames(file_list)]
         self.bbox_gts = [i.replace("mask", "box") for i in self.gts]
         self.edges = [i.replace("mask", "edge") for i in self.gts]
 
@@ -231,12 +380,18 @@ class COSwithBox(data.Dataset):
             image, bbox_image, gt, edge = augmented['image'], augmented['image2'], augmented['mask'], augmented['edge']
             image, bbox_image, gt, edge = Image.fromarray(image), Image.fromarray(bbox_image), Image.fromarray(
                 gt), Image.fromarray(edge)
+        else:
+            image, bbox_image, gt = np.array(image).astype(np.uint8), np.array(bbox_image).astype(
+                np.uint8), np.array(gt).astype(np.uint8)
+            augmented = aug2(image=image, image2=bbox_image, mask=gt)
+            image, bbox_image, gt = augmented['image'], augmented['image2'], augmented['mask']
+            image, bbox_image, gt = Image.fromarray(image), Image.fromarray(bbox_image), Image.fromarray(gt)
         image = self.img_transform(image)
         bbox_image = self.img_transform(bbox_image)
         gt = self.gt_transform(gt)
         if self.istraining:
             edge = self.gt_transform(edge)
-            return {'image': image, 'bbox_image': bbox_image, 'gt': gt, 'edge': edge, 'H': H, 'W': W}
+            return {'image': image, 'bbox_image': bbox_image, 'gt': gt, 'edge': edge, 'H': H, 'W': W, 'name': name}
         else:
             return {'image': image, 'bbox_image': bbox_image, 'gt': gt, 'H': H, 'W': W, 'name': name}
 
@@ -263,8 +418,9 @@ def get_dataset(config, dataset_key):
     dataset = dataset_class(
         image_root=dataset_config['image_root'],
         gt_root=dataset_config['gt_root'],
+        file_list=dataset_config['file_list'],
         trainsize=dataset_config['trainsize'],
         istraining=dataset_config['istraining'],
         repeat=dataset_config.get('repeat', 1)
     )
-    return dataset
+    return dataset  
