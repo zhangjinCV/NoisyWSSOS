@@ -373,7 +373,6 @@ def pvt_v2_b4(pretrained=False, **kwargs):
         patch_size=4, embed_dims=[64, 128, 320, 512], num_heads=[1, 2, 5, 8], mlp_ratios=[8, 8, 4, 4], qkv_bias=True,
         norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[3, 8, 27, 3], sr_ratios=[8, 4, 2, 1],
         **kwargs)
-    model.default_cfg = _cfg()
     model.load_state_dict(torch.load("/mnt/jixie16t/dataset/imagenet_pretrained_weight/PVTv2/pvt_v2_b4.pth"))
     print("pvt v2 b4 loaded!")
     return model

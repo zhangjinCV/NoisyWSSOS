@@ -7,7 +7,10 @@ import torch.utils.data as data
 import torchvision.transforms as transforms
 from PIL import Image, ImageDraw
 import albumentations as A
-import json, glob, cv2
+from pycocotools import mask as ppmask
+import json, glob, cv2, tqdm 
+from torch.nn import functional as F
+
 
 def seed_torch(seed=2024):
     random.seed(seed)
@@ -19,15 +22,20 @@ def seed_torch(seed=2024):
     torch.backends.cudnn.benchmark = False
     torch.backends.cudnn.deterministic = True
 
-# 读取配置文件
 def load_config(config_path):
     with open(config_path, 'r') as file:
         config = yaml.safe_load(file)
     return config
 
-# 构建数据增强管道
+def decode_segmentation(rle, height, width):
+    """Decode RLE segmentation to a binary mask."""
+    return ppmask.decode({
+        'size': [height, width],
+        'counts': rle
+    })
+
 aug = A.Compose([
-    A.ColorJitter(0.5, 0.5, 0.5, 0.5),
+    A.ColorJitter(0.6, 0.6, 0.6, 0.6),
     A.HorizontalFlip(p=0.5),
     A.VerticalFlip(p=0.5),
     A.Flip(p=0.5),
@@ -41,25 +49,112 @@ aug = A.Compose([
     A.Perspective(p=0.5)
 ], additional_targets={'image2': 'image', 'mask': 'mask', 'edge': 'mask', 'mask2': 'mask', 'mask3': 'mask'})
 
-aug2 = A.Compose([
-    #A.ColorJitter(0.3, 0.3, 0.3),
-    A.HorizontalFlip(p=1),
-    A.VerticalFlip(p=1),
-    A.Flip(p=1),
-    A.Transpose(p=0.5),
-    A.GaussNoise(p=0.5),
-    A.Blur(p=0.5),
-    A.ShiftScaleRotate(rotate_limit=30),
-    # A.ToGray(p=0.2),
-    # A.Emboss(p=0.5),
-    # A.Posterize(p=0.5),
-    # A.Perspective(p=0.5)
-], additional_targets={'image2': 'image', 'mask': 'mask', 'edge': 'mask', 'mask2': 'mask', 'mask3': 'mask'})
 
 def read_filenames(txt_file):
     with open(txt_file, 'r') as f:
         filenames = f.read().splitlines()
     return filenames
+
+
+class SA1B(data.Dataset):
+    def __init__(self, image_root, json_root, file_list, trainsize, istraining=True, repeat=1, **kwargs):
+        self.trainsize = trainsize
+        self.istraining = istraining
+        self.json_files = glob.glob(os.path.join(json_root, '*.json'))  
+        self.images = [glob.glob(os.path.join(image_root, '*.jpg'))]
+        common = set([os.path.basename(i).replace('.jpg', '') for i in self.images[0]]) & set([os.path.basename(i).replace('.json', '') for i in self.json_files])
+        self.images = [os.path.join(image_root, i + '.jpg') for i in common]
+        self.json_files = [os.path.join(json_root, i + '.json') for i in common]
+
+        self.json_files = np.array(sorted(self.json_files))
+        self.images = np.array(sorted(self.images))
+
+        self.check_pairs(self.images, self.json_files)
+        
+        self.img_transform = transforms.Compose([
+            transforms.Resize((self.trainsize, self.trainsize)),
+            transforms.ToTensor(),
+            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        ])
+        self.gt_transform = transforms.Compose([
+            transforms.Resize((self.trainsize, self.trainsize)),
+            transforms.ToTensor()
+        ])
+        self.size = len(self.images)
+
+    def __getitem__(self, index):
+        image = self.rgb_loader(self.images[index])
+        name = os.path.basename(self.images[index])
+        json_path = self.json_files[index]
+
+        # Load JSON file
+        with open(json_path, 'r') as f:
+            data = json.load(f)
+        
+        annotations = data['annotations']
+        maxs = len(annotations)
+        min_choice = min(30, maxs)
+        selected_annotations = random.sample(annotations, random.randint(1, min_choice))
+
+        width, height = image.size
+        mask_image = np.zeros((height, width), dtype=np.uint8)
+        bbox_image = np.zeros((height, width, 3), dtype=np.uint8)
+
+        for annotation in selected_annotations:
+            rle = annotation['segmentation']['counts']
+            binary_mask = self.decode_segmentation(rle, height, width)
+            mask_image = np.maximum(mask_image, binary_mask)
+
+            bbox = annotation['bbox']
+            x, y, w, h = map(int, bbox)
+            bbox_image[y:y+h, x:x+w, :] = np.array(image)[y:y+h, x:x+w, :]
+
+        # Convert mask to 255 scale
+        mask_image = (mask_image * 255).astype(np.uint8)
+        mask_pil = Image.fromarray(mask_image)
+        bbox_pil = Image.fromarray(bbox_image)
+
+        # Create edge map using max pooling
+        mask_tensor = torch.from_numpy(mask_image).unsqueeze(0).unsqueeze(0).float() / 255.0  # Convert to a torch tensor
+        edge_map = F.max_pool2d(mask_tensor, kernel_size=5, stride=1, padding=2) - mask_tensor
+        edge_map = (edge_map.squeeze().numpy() * 255).astype(np.uint8)  # Convert back to numpy and scale to 255
+
+        edge_pil = Image.fromarray(edge_map)
+
+        H, W = image.size
+        if self.istraining:
+            image, bbox_pil, mask_pil, edge_pil = np.array(image).astype(np.uint8), np.array(bbox_pil).astype(
+                np.uint8), np.array(mask_pil).astype(np.uint8), np.array(edge_pil).astype(np.uint8)
+            augmented = aug(image=image, image2=bbox_pil, mask=mask_pil, edge=edge_pil)
+            image, bbox_pil, mask_pil, edge_pil = augmented['image'], augmented['image2'], augmented['mask'], augmented['edge']
+            image, bbox_pil, mask_pil, edge_pil = Image.fromarray(image), Image.fromarray(bbox_pil), Image.fromarray(mask_pil), Image.fromarray(edge_pil)
+
+        image = self.img_transform(image)
+        bbox_image = self.img_transform(bbox_pil)
+        mask_image = self.gt_transform(mask_pil)
+        edge_image = self.gt_transform(edge_pil)
+
+        return {'image': image, 'bbox_image': bbox_image, 'gt': mask_image, 'edge': edge_image, 'H': H, 'W': W, 'name': name}
+
+    def rgb_loader(self, path):
+        img = Image.open(path)
+        return img
+
+    def decode_segmentation(self, rle, height, width):
+        """Decode RLE segmentation to a binary mask."""
+        return ppmask.decode({
+            'size': [height, width],
+            'counts': rle
+        })
+
+    def check_pairs(self, images, json_files):
+        print("checking dataset pairs")
+        assert len(images) == len(json_files)
+        print("check dataset pass!")
+
+    def __len__(self):
+        return self.size
+    
 
 class LVISDataset(data.Dataset):
     def __init__(self, image_root, gt_root, file_list, json_path='/mnt/jixie16t/dataset/LVIS/lvis_v1_train.json', trainsize=384, istraining=True):
@@ -202,10 +297,12 @@ class COSwithNoBox(data.Dataset):
     def __init__(self, image_root, gt_root, file_list, trainsize, istraining=True, repeat=1, **kwargs):
         self.trainsize = trainsize
         self.istraining = istraining
-        self.images = [os.path.join(image_root, fname) for fname in read_filenames(file_list)] * repeat
-        self.gts = [os.path.join(gt_root, fname.replace('.jpg', '.png')) for fname in read_filenames(file_list)] * repeat
-        self.edges = [i.replace("mask", "edge") for i in self.gts] * repeat
+        self.gts = [os.path.join(gt_root, fname.replace('.jpg', '.png')) for fname in read_filenames(file_list)]
+        self.images = [os.path.join(image_root, fname) for fname in read_filenames(file_list)]
+        self.edges = [i.replace("mask", "edge") for i in self.gts]
 
+        self.check_pairs(self.images, self.gts, self.edges)
+        
         if self.istraining:
             self.images = np.array(sorted(self.images))
             self.gts = np.array(sorted(self.gts))
@@ -235,8 +332,6 @@ class COSwithNoBox(data.Dataset):
             image, gt, edge = np.array(image).astype(np.uint8), np.array(gt).astype(np.uint8), np.array(edge).astype(np.uint8)
             augmented = aug(image=image, mask=gt, edge=edge)
             image, gt, edge = augmented['image'], augmented['mask'], augmented['edge']
-            gt = np.where(gt > 0.2 * 255, 255, 0).astype(np.uint8)
-            edge = np.where(edge > 0.2 * 255, 255, 0).astype(np.uint8)
             image, gt, edge = Image.fromarray(image),  Image.fromarray(gt), Image.fromarray(edge)
         image = self.img_transform(image)
         gt = self.gt_transform(gt)
@@ -255,79 +350,19 @@ class COSwithNoBox(data.Dataset):
         with open(path, 'rb') as f:
             img = Image.open(f)
             return img.convert('L')
-
-    def __len__(self):
-        return self.size
-
-
-class COSwithNoBoxML(data.Dataset):
-    def __init__(self, image_root, gt_root, gt_root2, gt_root3, file_list, trainsize, istraining=True, repeat=1, **kwargs):
-        self.trainsize = trainsize
-        self.istraining = istraining
-        self.images = [os.path.join(image_root, fname) for fname in read_filenames(file_list)] * repeat
-        self.gts = [os.path.join(gt_root, fname.replace('.jpg', '.png')) for fname in read_filenames(file_list)] * repeat
-        self.gts2 = [os.path.join(gt_root2, fname.replace('.jpg', '.png')) for fname in read_filenames(file_list)] * repeat
-        self.gts3 = [os.path.join(gt_root3, fname.replace('.jpg', '.png')) for fname in read_filenames(file_list)] * repeat
-        self.edges = [i.replace("mask", "edge") for i in self.gts] * repeat
-
+    
+    def check_pairs(self, images, gts, edges):
+        print("checking dataset pairs")
         if self.istraining:
-            self.images = np.array(sorted(self.images))
-            self.gts = np.array(sorted(self.gts))
-            self.gts2 = np.array(sorted(self.gts2))
-            self.gts3 = np.array(sorted(self.gts3))
-            self.edges = np.array(sorted(self.edges))
+            for img, gt, edge in tqdm.tqdm(zip(images, gts, edges)):
+                assert os.path.exists(img), f"Image file {img} does not exist"
+                assert os.path.exists(gt), f"GT file {gt} does not exist"
+                assert os.path.exists(edge), f"Edge file {edge} does not exist"
         else:
-            self.images = np.array(sorted(self.images))
-            self.gts = np.array(sorted(self.gts))
-
-        self.img_transform = transforms.Compose([
-            transforms.Resize((self.trainsize, self.trainsize)),
-            transforms.ToTensor(),
-            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-        ])
-        self.gt_transform = transforms.Compose([
-            transforms.Resize((self.trainsize, self.trainsize)),
-            transforms.ToTensor()
-        ])
-        self.size = len(self.images)
-
-    def __getitem__(self, index):
-        image = self.rgb_loader(self.images[index])
-        name = os.path.basename(self.images[index])
-        gt = self.binary_loader(self.gts[index])
-        H, W = image.size
-        if self.istraining:
-            gt2 = self.binary_loader(self.gts2[index])
-            gt3 = self.binary_loader(self.gts3[index])
-            edge = self.binary_loader(self.edges[index])
-            image, gt, gt2, gt3, edge = np.array(image).astype(np.uint8), np.array(gt).astype(np.uint8), np.array(gt2).astype(np.uint8), np.array(gt3).astype(np.uint8), np.array(edge).astype(np.uint8)
-            augmented = aug(image=image, mask=gt, mask2=gt2, mask3=gt3, edge=edge)
-            image, gt, gt2, gt3, edge = augmented['image'], augmented['mask'], augmented['mask2'], augmented['mask3'], augmented['edge']
-            gt = np.where(gt > 0.2 * 255, 255, 0).astype(np.uint8)
-            gt2 = np.where(gt2 > 0.2 * 255, 255, 0).astype(np.uint8)
-            gt3 = np.where(gt3 > 0.2 * 255, 255, 0).astype(np.uint8)
-            edge = np.where(edge > 0.2 * 255, 255, 0).astype(np.uint8)
-            image, gt, gt2, gt3, edge = Image.fromarray(image),  Image.fromarray(gt), Image.fromarray(gt2), Image.fromarray(gt3), Image.fromarray(edge)
-        image = self.img_transform(image)
-        gt = self.gt_transform(gt)
-        if self.istraining:
-            edge = self.gt_transform(edge)
-            gt2 = self.gt_transform(gt2)
-            gt3 = self.gt_transform(gt3)
-            return {'image': image, 'gt': gt, 'gt2': gt2, 'gt3': gt3, 'edge': edge, 'H': H, 'W': W, 'name': name}
-        else:
-            return {'image': image, 'gt': gt, 'H': H, 'W': W, 'name': name}
-
-    def rgb_loader(self, path):
-        with open(path, 'rb') as f:
-            img = Image.open(f)
-            return img.convert('RGB')
-
-    def binary_loader(self, path):
-        with open(path, 'rb') as f:
-            img = Image.open(f)
-            return img.convert('L')
-
+            for img, gt in tqdm.tqdm(zip(images, gts)):
+                assert os.path.exists(img), f"Image file {img} does not exist"
+                assert os.path.exists(gt), f"GT file {gt} does not exist"
+        print("check dataset pass!")
     def __len__(self):
         return self.size
 
@@ -380,12 +415,6 @@ class COSwithBox(data.Dataset):
             image, bbox_image, gt, edge = augmented['image'], augmented['image2'], augmented['mask'], augmented['edge']
             image, bbox_image, gt, edge = Image.fromarray(image), Image.fromarray(bbox_image), Image.fromarray(
                 gt), Image.fromarray(edge)
-        else:
-            image, bbox_image, gt = np.array(image).astype(np.uint8), np.array(bbox_image).astype(
-                np.uint8), np.array(gt).astype(np.uint8)
-            augmented = aug2(image=image, image2=bbox_image, mask=gt)
-            image, bbox_image, gt = augmented['image'], augmented['image2'], augmented['mask']
-            image, bbox_image, gt = Image.fromarray(image), Image.fromarray(bbox_image), Image.fromarray(gt)
         image = self.img_transform(image)
         bbox_image = self.img_transform(bbox_image)
         gt = self.gt_transform(gt)
@@ -416,11 +445,12 @@ def get_dataset(config, dataset_key):
     dataset_config = config['dataset'][dataset_key]
     dataset_class = globals()[dataset_config['type']]
     dataset = dataset_class(
-        image_root=dataset_config['image_root'],
-        gt_root=dataset_config['gt_root'],
-        file_list=dataset_config['file_list'],
-        trainsize=dataset_config['trainsize'],
-        istraining=dataset_config['istraining'],
-        repeat=dataset_config.get('repeat', 1)
+        **dataset_config
+        # image_root=dataset_config['image_root'],
+        # gt_root=dataset_config['gt_root'],
+        # file_list=dataset_config['file_list'],
+        # trainsize=dataset_config['trainsize'],
+        # istraining=dataset_config['istraining'],
+        # repeat=dataset_config.get('repeat', 1)
     )
     return dataset  

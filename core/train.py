@@ -11,9 +11,11 @@ import sys, copy
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from models import *
 from torch.optim import *
+from datasets.metrics import MAE, IoU
 from tensorboardX import SummaryWriter
 import logging
 from utils import seed_torch, denormalize, convert_bn_to_syncbn, setup_process_groups, LinearCosineAnnealingLR
+from utils import tensor_pose_processing_edge, tensor_pose_processing_mask, tensor_pose_processing_gt
 from utils import save_weight, save_checkpoint
 from torch import optim
 import tqdm
@@ -46,6 +48,14 @@ def build_scheduler(opt, optimizer):
     scheduler = scheduler_class(optimizer, **opt['scheduler']['params'])
     return scheduler
 
+def get_metric(metric_name):
+    if metric_name == 'MAE':
+        return MAE()
+    elif metric_name == 'IoU':
+        return IoU()
+    else:
+        raise ValueError(f"Unsupported metric: {metric_name}")
+
 def build_dataloader(opt, dataset_key, world_size=None, rank=None):
     dataset_config = opt['dataset'][dataset_key]
     dataset = get_dataset(opt, dataset_key)
@@ -56,7 +66,7 @@ def build_dataloader(opt, dataset_key, world_size=None, rank=None):
             batch_size=dataset_config['batch_size'], 
             num_workers=dataset_config['num_workers'], 
             sampler=sampler,
-            drop_last=True
+            drop_last=False
         )
         return dataloader, sampler
     else:
@@ -67,6 +77,14 @@ def build_dataloader(opt, dataset_key, world_size=None, rank=None):
             shuffle=dataset_config['shuffle']
         )
         return dataloader, None
+
+def aggregate_loss_records(loss_records, world_size):
+    aggregated_loss_records = {}
+    for key, values in loss_records.items():
+        values_tensor = torch.tensor(values, dtype=torch.float32, device='cuda')
+        dist.all_reduce(values_tensor, op=dist.ReduceOp.SUM)
+        aggregated_loss_records[key] = (values_tensor / world_size).cpu().tolist()
+    return aggregated_loss_records
 
 def merge_data_batches(data_batches):
     merged_data = {}
@@ -94,15 +112,16 @@ def check_logits_losses(logits_list, losses):
             'The length of logits_list should equal to the types of loss config: {} != {}.'
             .format(len_logits, len_losses))
 
+def iou_cal(pred, gt):
+    pred = F.sigmoid(pred)
+    intersection = torch.sum(pred * gt, dim=(1, 2, 3))
+    union = torch.sum(pred + gt, dim=(1, 2, 3))
+    iou = intersection / (union - intersection + 1e-6)
+    return iou
 
-def cal_uncertainty_areas(pred):
-    pred = torch.sigmoid(pred)
-    uncertain_region = 1 - (2 * pred - 1).abs().pow(2)
-    return uncertain_region
-
-def loss_computation(logits_list, gt_inputs, coefs, losses, data, opt):
+def loss_computation(logits_list, targets, edges, losses, data, opt):
     check_logits_losses(logits_list, losses)
-    sum_loss = 0.0
+    loss_list = []
     iter_percentage = data['tmp_iter'] / data['total_step']
     for i in range(len(logits_list)):
         logits = logits_list[i]
@@ -110,18 +129,19 @@ def loss_computation(logits_list, gt_inputs, coefs, losses, data, opt):
         coefs = losses['coef'][i]
         gt_inputs = losses['gt_input'][i]
         for loss_fn, coef, gt_input in zip(loss_fns, coefs, gt_inputs):
-            gt = data[gt_input]
+            if gt_input == "gt":
+                target = targets
+            elif gt_input == "edge":
+                target = edges
             if loss_fn.__class__.__name__ == 'UALoss':
-                loss = coef * loss_fn(logits, gt, iter_percentage)
-            elif loss_fn.__class__.__name__ == 'NCLoss':
+                loss = coef * loss_fn(logits, target, iter_percentage)
+            elif loss_fn.__class__.__name__ == 'NCLoss' or loss_fn.__class__.__name__ == 'NLSSLoss':
                 q = 1 if data['tmp_epoch'] > opt['training']['q_epoch'] else 2
-                loss = coef * loss_fn(logits, gt, q)
-            elif loss_fn.__class__.__name__ == 'L1Loss' or loss_fn.__class__.__name__ == 'PerceptualLoss' or loss_fn.__class__.__name__ == 'GradientLoss':
-                loss = loss_fn(logits, gt, data['box'])
+                loss = coef * loss_fn(logits, target, q)
             else:
-                loss = coef * loss_fn(logits, gt)
-            sum_loss += loss
-    return sum_loss
+                loss = coef * loss_fn(logits, target)
+            loss_list.append(loss)
+    return loss_list
 
 def train(rank, world_size, opt, loss_records):
     seed_torch(opt['seed'] + rank)
@@ -140,6 +160,7 @@ def train(rank, world_size, opt, loss_records):
     train_loaders = {key: dataloaders[key][0] for key in dataloaders.keys() if 'train' in key}
     samplers = {key: dataloaders[key][1] for key in dataloaders.keys() if 'train' in key}
     val_loader = dataloaders['val'][0]
+    val_metrics = {metric_name: get_metric(metric_name) for metric_name in opt['dataset']['val']['metric']}
 
     start_epoch = 1
     if opt['training']['load'] is not None and os.path.exists(opt['training']['load']):
@@ -221,14 +242,8 @@ def train(rank, world_size, opt, loss_records):
 
             with autocast():
                 logits_list = model(data)['res']
-                loss_sum = loss_computation(logits_list, gt_inputs, coefs, losses, data, opt)
-                loss_sum_it = loss_sum.clone()
-                for loss_it_one, name_it_one in zip(loss_sum_it.detach().cpu().numpy(), data['name']):
-                    if name_it_one in loss_records:
-                        loss_records[name_it_one].append(float(loss_it_one))
-                    else:
-                        loss_records[name_it_one] = [float(loss_it_one)]
-                loss = loss_sum.mean() 
+                loss_list = loss_computation(logits_list, data['gt'], data['edge'], losses, data, opt)
+                loss = sum(loss_list)
 
             scaler.scale(loss).backward()
             scaler.step(optimizer)
@@ -248,22 +263,23 @@ def train(rank, world_size, opt, loss_records):
                 eta_seconds = (total_iters - finished_iters) * iter_time
                 eta = str(timedelta(seconds=int(eta_seconds)))
 
-                print(f'{datetime.now()} | Epoch [{epoch:03d}/{opt["training"]["epochs"]:03d}], '
+                # print(f'{datetime.now()} | Epoch [{epoch:03d}/{opt["training"]["epochs"]:03d}], '
+                #       f'Step [{i:04d}/{total_step:04d}], LR {lr:.8f}, Loss: {loss.item():.4f}, '
+                #       f'DataTime: {data_time:.4f} sec, IterTime: {iter_time:.4f}sec, ImageShape: {data["image"].shape},  ETA: {eta}')
+                logging.info(f'{datetime.now()} | Epoch [{epoch:03d}/{opt["training"]["epochs"]:03d}], '
                       f'Step [{i:04d}/{total_step:04d}], LR {lr:.8f}, Loss: {loss.item():.4f}, '
                       f'DataTime: {data_time:.4f} sec, IterTime: {iter_time:.4f}sec, ImageShape: {data["image"].shape},  ETA: {eta}')
-                logging.info(f'[Train Info]:Epoch [{epoch}/{opt["training"]["epochs"]}], Step [{i}/{total_step}], '
-                             f'Loss: {loss.item():.4f}, DataTime: {data_time:.4f}, IterTime: {iter_time:.4f}, ETA: {eta}')
                 writer.add_scalar('Loss', loss.item(), global_step=step)
 
-                # grid_image = make_grid(denormalize(data['image'][0].clone().cpu().data), 1, normalize=True)
-                grid_image = make_grid(data['image'][0].clone().cpu().data, 1, normalize=True)
+                grid_image = make_grid(denormalize(data['image'][0].clone().cpu().data), 1, normalize=True)
+                # grid_image = make_grid(data['image'][0].clone().cpu().data, 1, normalize=True)
                 writer.add_image('RGB', grid_image, step)
 
                 grid_image = make_grid(data['gt'][0].clone().cpu().data, 1, normalize=True)
                 writer.add_image('GT', grid_image, step)
 
-                pre = (logits_list[opt['training']['main_output_index']]).clone()[0].cpu().data 
-                # pre = (logits_list[opt['training']['main_output_index']]).clone()[0].cpu().sigmoid().data 
+                # pre = (logits_list[opt['training']['main_output_index']]).clone()[0].cpu().data 
+                pre = (logits_list[opt['training']['main_output_index']]).clone()[0].cpu().sigmoid().data 
                 pre = (pre * 255.).to(torch.uint8)
                 grid_image_2 = make_grid(pre, 1, normalize=False)
                 writer.add_image('Pre', grid_image_2, step)
@@ -281,41 +297,53 @@ def train(rank, world_size, opt, loss_records):
             writer.add_scalar('Loss-epoch', loss_all, global_step=epoch)
         if rank == 0:
             save_checkpoint(model, optimizer, scheduler, epoch, save_path, opt)
-
         if rank == 0 and (epoch % opt['training']['val_step'] == 0):
-            val(val_loader, model, epoch, save_path, writer, opt)
+            val(val_loader, model, epoch, save_path, writer, opt, val_metrics)
+
 
     if rank == 0:
         writer.close()
     dist.destroy_process_group()
 
-def val(test_loader, model, epoch, save_path, writer, opt):
+def val(test_loader, model, epoch, save_path, writer, opt, metrics):
     torch.cuda.empty_cache()
     model.eval()
+    process_func = globals()[opt['dataset']['val']['pose_process'][0]]
+    gt_process = tensor_pose_processing_gt
+
     with torch.no_grad():
-        mae_sum = []
         for i, data in tqdm.tqdm(enumerate(test_loader, start=1)):
             data = {k: v.cuda() if isinstance(v, torch.Tensor) else v for k, v in data.items()}
             outputs = model(data)
             res = outputs['res'][opt['training']['main_output_index']]
-            res = res.sigmoid()
+            
             for j in range(len(res)):
-                pre = F.interpolate(res[j].unsqueeze(0), size=(data['H'][j].item(), data['W'][j].item()), mode='bilinear')
-                gt_single = F.interpolate(data['gt'][j].unsqueeze(0), size=(data['H'][j].item(), data['W'][j].item()), mode='bilinear')
-                mae_sum.append(torch.mean(torch.abs(gt_single - pre)).item())
+                pre_single = process_func(res[j], data, j)
+                gt_single = gt_process(data['gt'][j], data, j)
+                
+                for metric in metrics.values():
+                    metric.update(pre_single, gt_single)
+        
+        # 动态计算并记录每个指标，打印的时候一行打印完
+        for metric_name, metric in metrics.items():
+            final_value = metric.compute()
+            writer.add_scalar(f'Validation/{metric_name}', final_value, global_step=epoch)
 
-        mae = np.mean(mae_sum)
-        mae = "%.5f" % mae
-        mae = float(mae)
-        writer.add_scalar('MAE', torch.tensor(mae), global_step=epoch)
-        print(f'Epoch: {epoch}, MAE: {mae}, bestMAE: {opt["training"]["best_mae"]}, bestEpoch: {opt["training"]["best_epoch"]}.')
-        if mae < opt['training']['best_mae']:
-            opt['training']['best_mae'] = mae
-            opt['training']['best_epoch'] = epoch
-            torch.save(model.state_dict(), save_path + 'model_best.pth')
+            # print(f'Epoch: {epoch}, {metric_name}: {final_value}, Best {metric_name}: {metric.best_score} at epoch {metric.best_epoch}')
+            logging.info(f'Epoch: {epoch}, {metric_name}: {final_value}, Best {metric_name}: {metric.best_score} at epoch {metric.best_epoch}')
+        
+        # 比较当前MAE和最优MAE并保存最佳模型
+        if 'MAE' in metrics and metrics['MAE'].compute() < metrics['MAE'].best_score:
+            metrics['MAE'].best_score = metrics['MAE'].compute()
+            metrics['MAE'].best_epoch = epoch
+            weight = {'model': model.state_dict()}
+            torch.save(weight, os.path.join(save_path, 'model_best.pth'))
             print(f'Save state_dict successfully! Best epoch: {epoch}.')
-        logging.info(f'[Val Info]:Epoch: {epoch}, MAE: {mae}, bestMAE: {opt["training"]["best_mae"]}, bestEpoch: {opt["training"]["best_epoch"]}.')
+
+        for metric_name, metric in metrics.items():
+            metric.reset()
     torch.cuda.empty_cache()
+
 
 def main():
     parser = argparse.ArgumentParser(description='Training configuration')
@@ -337,8 +365,6 @@ def main():
     os.environ['CUDA_VISIBLE_DEVICES'] = ','.join(gpu_ids)
     loss_records = {}
     mp.spawn(train, args=(world_size, opt, loss_records), nprocs=world_size, join=True)
-    with open(os.path.join(opt['training']['save_path'], 'loss_records.json'), 'w') as f:
-        json.dump(loss_records, f)
 
 if __name__ == '__main__':
     main()

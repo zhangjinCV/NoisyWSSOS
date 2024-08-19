@@ -8,9 +8,9 @@ methods=["ANet"]
 for method in methods: 
     for _data_name in ['pseudo_label_80%']:
         print("eval-dataset: {}".format(_data_name))
-        mask_root = '/mnt/jixie16t/dataset/COD/LabelNoiseTrainDataset/CAMO_COD_generate_80%/mask/'
-        pred_root = "/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/data/ANet/pseudo_label_80%/mask/"
-        mask_name_list = sorted(os.listdir(mask_root))
+        mask_root = '/mnt/jixie16t/dataset/COD/CAMO_COD_train/mask/'
+        pred_root = "/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/data/ANet/remaining_80_percent%/mask/"
+        mask_name_list = sorted(os.listdir(pred_root))
         FM = Fmeasure()
         WFM = WeightedFmeasure()
         SM = Smeasure()

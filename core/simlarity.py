@@ -96,12 +96,20 @@ def readjson2txt(json_path, top_txt_path, remaining_txt_path):
     with open(json_path, 'r') as file:
         data = json.load(file)
     
-    sorted_data = sorted(data, key=lambda x: x[1], reverse=True)
+    sorted_data = sorted(data, key=lambda x: x[1], reverse=False)
     
-    top_20_percent_index = int(len(sorted_data) * 0.2)
+    top_20_percent_images = []
+    remaining_80_percent_images = []
+    for i in range(len(sorted_data)):
+        if i % 5 == 0:
+            top_20_percent_images.append(sorted_data[i][0])
+        else:
+            remaining_80_percent_images.append(sorted_data[i][0])
+
+    # top_20_percent_index = int(len(sorted_data) * 0.2)
     
-    top_20_percent_images = [item[0] for item in sorted_data[:top_20_percent_index]]
-    remaining_80_percent_images = [item[0] for item in sorted_data[top_20_percent_index:]]
+    # top_20_percent_images = [item[0] for item in sorted_data[:top_20_percent_index]]
+    # remaining_80_percent_images = [item[0] for item in sorted_data[top_20_percent_index:]]
     
     with open(top_txt_path, 'w') as file:
         for image_name in top_20_percent_images:
@@ -125,6 +133,6 @@ if __name__ == "__main__":
     # save_top_20_percent(res, save_path)
 
     readjson2txt(save_path,
-        '/mnt/jixie16t/dataset/COD/CAMO_COD_train/LabelNoiseTrainList/top_20_percent.txt',
-        '/mnt/jixie16t/dataset/COD/CAMO_COD_train/LabelNoiseTrainList/remaining_80_percent.txt'
+        '/mnt/jixie16t/dataset/COD/CAMO_COD_train/LabelNoiseTrainList/middle_20_percent.txt',
+        '/mnt/jixie16t/dataset/COD/CAMO_COD_train/LabelNoiseTrainList/remaining_middle_80_percent.txt'
     )

@@ -18,7 +18,7 @@ def split_data_rate(ration=5):
     
     seed_torch()
     
-    images = ["/mnt/jixie16t/dataset/TOD2/GDD/train/image/" + f for f in os.listdir("/mnt/jixie16t/dataset/TOD2/GDD/train/image") if f.endswith('.jpg')]
+    images = ["/mnt/jixie16t/dataset/COD/CAMO_COD_train/image/" + f for f in os.listdir("/mnt/jixie16t/dataset/COD/CAMO_COD_train/image") if f.endswith('.jpg')]
     choose_samples = int(len(images) * ration // 100)
     print("split nums:", choose_samples)
     samples = np.random.choice(len(images), choose_samples, replace=False)
@@ -28,26 +28,26 @@ def split_data_rate(ration=5):
     edges = [i.replace("image", "edge").replace(".jpg", ".png") for i in images]
     
     for image in images:
-        if not os.path.exists(f"/mnt/jixie16t/dataset/TOD2/GDD/LabelNoiseTrainDataset/train_{ration}%/image"):
-            os.makedirs(f"/mnt/jixie16t/dataset/TOD2/GDD/LabelNoiseTrainDataset/train_{ration}%/image")
-        shutil.copy(image, f"/mnt/jixie16t/dataset/TOD2/GDD/LabelNoiseTrainDataset/train_{ration}%/image/")
+        if not os.path.exists(f"/mnt/jixie16t/dataset/COD/CAMO_COD_train/LabelNoiseTrainDataset/train_{ration}%/image"):
+            os.makedirs(f"/mnt/jixie16t/dataset/COD/CAMO_COD_train/LabelNoiseTrainDataset/train_{ration}%/image")
+        shutil.copy(image, f"/mnt/jixie16t/dataset/COD/CAMO_COD_train/LabelNoiseTrainDataset/train_{ration}%/image/")
     
     for gt in gts:
-        if not os.path.exists(f"/mnt/jixie16t/dataset/TOD2/GDD/LabelNoiseTrainDataset/train_{ration}%/mask"):
-            os.makedirs(f"/mnt/jixie16t/dataset/TOD2/GDD/LabelNoiseTrainDataset/train_{ration}%/mask")
-        shutil.copy(gt, f"/mnt/jixie16t/dataset/TOD2/GDD/LabelNoiseTrainDataset/train_{ration}%/mask/")
+        if not os.path.exists(f"/mnt/jixie16t/dataset/COD/CAMO_COD_train/LabelNoiseTrainDataset/train_{ration}%/mask"):
+            os.makedirs(f"/mnt/jixie16t/dataset/COD/CAMO_COD_train/LabelNoiseTrainDataset/train_{ration}%/mask")
+        shutil.copy(gt, f"/mnt/jixie16t/dataset/COD/CAMO_COD_train/LabelNoiseTrainDataset/train_{ration}%/mask/")
     
     for box in boxs:
-        if not os.path.exists(f"/mnt/jixie16t/dataset/TOD2/GDD/LabelNoiseTrainDataset/train_{ration}%/box"):
-            os.makedirs(f"/mnt/jixie16t/dataset/TOD2/GDD/LabelNoiseTrainDataset/train_{ration}%/box")
-        shutil.copy(box, f"/mnt/jixie16t/dataset/TOD2/GDD/LabelNoiseTrainDataset/train_{ration}%/box/")
+        if not os.path.exists(f"/mnt/jixie16t/dataset/COD/CAMO_COD_train/LabelNoiseTrainDataset/train_{ration}%/box"):
+            os.makedirs(f"/mnt/jixie16t/dataset/COD/CAMO_COD_train/LabelNoiseTrainDataset/train_{ration}%/box")
+        shutil.copy(box, f"/mnt/jixie16t/dataset/COD/CAMO_COD_train/LabelNoiseTrainDataset/train_{ration}%/box/")
     
     for edge in edges:
-        if not os.path.exists(f"/mnt/jixie16t/dataset/TOD2/GDD/LabelNoiseTrainDataset/train_{ration}%/edge"):
-            os.makedirs(f"/mnt/jixie16t/dataset/TOD2/GDD/LabelNoiseTrainDataset/train_{ration}%/edge")
-        shutil.copy(edge, f"/mnt/jixie16t/dataset/TOD2/GDD/LabelNoiseTrainDataset/train_{ration}%/edge/")
+        if not os.path.exists(f"/mnt/jixie16t/dataset/COD/CAMO_COD_train/LabelNoiseTrainDataset/train_{ration}%/edge"):
+            os.makedirs(f"/mnt/jixie16t/dataset/COD/CAMO_COD_train/LabelNoiseTrainDataset/train_{ration}%/edge")
+        shutil.copy(edge, f"/mnt/jixie16t/dataset/COD/CAMO_COD_train/LabelNoiseTrainDataset/train_{ration}%/edge/")
     
-    alls = ["/mnt/jixie16t/dataset/TOD2/GDD/train/image/" + f for f in os.listdir("/mnt/jixie16t/dataset/TOD2/GDD/train/image") if f.endswith('.jpg')]
+    alls = ["/mnt/jixie16t/dataset/COD/CAMO_COD_train/image/" + f for f in os.listdir("/mnt/jixie16t/dataset/COD/CAMO_COD_train/image") if f.endswith('.jpg')]
     next_ration = 100 - ration
     images_next_ration = [i for i in alls if i not in images]
     gts_next_ration = [i.replace("image", "mask").replace(".jpg", ".png") for i in images_next_ration]
@@ -55,26 +55,26 @@ def split_data_rate(ration=5):
     edges_next_ration = [i.replace("image", "edge").replace(".jpg", ".png") for i in images_next_ration]
     
     for image in images_next_ration:
-        if not os.path.exists(f"/mnt/jixie16t/dataset/TOD2/GDD/LabelNoiseTrainDataset/generate_{next_ration}%/image"):
-            os.makedirs(f"/mnt/jixie16t/dataset/TOD2/GDD/LabelNoiseTrainDataset/generate_{next_ration}%/image")
-        shutil.copy(image, f"/mnt/jixie16t/dataset/TOD2/GDD/LabelNoiseTrainDataset/generate_{next_ration}%/image/")
+        if not os.path.exists(f"/mnt/jixie16t/dataset/COD/CAMO_COD_train/LabelNoiseTrainDataset/generate_{next_ration}%/image"):
+            os.makedirs(f"/mnt/jixie16t/dataset/COD/CAMO_COD_train/LabelNoiseTrainDataset/generate_{next_ration}%/image")
+        shutil.copy(image, f"/mnt/jixie16t/dataset/COD/CAMO_COD_train/LabelNoiseTrainDataset/generate_{next_ration}%/image/")
     
     for gt in gts_next_ration:
-        if not os.path.exists(f"/mnt/jixie16t/dataset/TOD2/GDD/LabelNoiseTrainDataset/generate_{next_ration}%/mask"):
-            os.makedirs(f"/mnt/jixie16t/dataset/TOD2/GDD/LabelNoiseTrainDataset/generate_{next_ration}%/mask")
-        shutil.copy(gt, f"/mnt/jixie16t/dataset/TOD2/GDD/LabelNoiseTrainDataset/generate_{next_ration}%/mask/")
+        if not os.path.exists(f"/mnt/jixie16t/dataset/COD/CAMO_COD_train/LabelNoiseTrainDataset/generate_{next_ration}%/mask"):
+            os.makedirs(f"/mnt/jixie16t/dataset/COD/CAMO_COD_train/LabelNoiseTrainDataset/generate_{next_ration}%/mask")
+        shutil.copy(gt, f"/mnt/jixie16t/dataset/COD/CAMO_COD_train/LabelNoiseTrainDataset/generate_{next_ration}%/mask/")
     
     for box in boxs_next_ration:
-        if not os.path.exists(f"/mnt/jixie16t/dataset/TOD2/GDD/LabelNoiseTrainDataset/generate_{next_ration}%/box"):
-            os.makedirs(f"/mnt/jixie16t/dataset/TOD2/GDD/LabelNoiseTrainDataset/generate_{next_ration}%/box")
-        shutil.copy(box, f"/mnt/jixie16t/dataset/TOD2/GDD/LabelNoiseTrainDataset/generate_{next_ration}%/box/")
+        if not os.path.exists(f"/mnt/jixie16t/dataset/COD/CAMO_COD_train/LabelNoiseTrainDataset/generate_{next_ration}%/box"):
+            os.makedirs(f"/mnt/jixie16t/dataset/COD/CAMO_COD_train/LabelNoiseTrainDataset/generate_{next_ration}%/box")
+        shutil.copy(box, f"/mnt/jixie16t/dataset/COD/CAMO_COD_train/LabelNoiseTrainDataset/generate_{next_ration}%/box/")
     
     for edge in edges_next_ration:
-        if not os.path.exists(f"/mnt/jixie16t/dataset/TOD2/GDD/LabelNoiseTrainDataset/generate_{next_ration}%/edge"):
-            os.makedirs(f"/mnt/jixie16t/dataset/TOD2/GDD/LabelNoiseTrainDataset/generate_{next_ration}%/edge")
-        shutil.copy(edge, f"/mnt/jixie16t/dataset/TOD2/GDD/LabelNoiseTrainDataset/generate_{next_ration}%/edge/")
+        if not os.path.exists(f"/mnt/jixie16t/dataset/COD/CAMO_COD_train/LabelNoiseTrainDataset/generate_{next_ration}%/edge"):
+            os.makedirs(f"/mnt/jixie16t/dataset/COD/CAMO_COD_train/LabelNoiseTrainDataset/generate_{next_ration}%/edge")
+        shutil.copy(edge, f"/mnt/jixie16t/dataset/COD/CAMO_COD_train/LabelNoiseTrainDataset/generate_{next_ration}%/edge/")
         
-    print(len(os.listdir(f"/mnt/jixie16t/dataset/TOD2/GDD/LabelNoiseTrainDataset/train_{ration}%/image")), len(os.listdir(f"/mnt/jixie16t/dataset/TOD2/GDD/LabelNoiseTrainDataset/generate_{next_ration}%/image/")))
+    print(len(os.listdir(f"/mnt/jixie16t/dataset/COD/CAMO_COD_train/LabelNoiseTrainDataset/train_{ration}%/image")), len(os.listdir(f"/mnt/jixie16t/dataset/COD/CAMO_COD_train/LabelNoiseTrainDataset/generate_{next_ration}%/image/")))
 
 
 if __name__ == "__main__":

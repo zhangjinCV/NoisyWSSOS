@@ -21,6 +21,17 @@ class L1Loss(nn.Module):
         return l1 + l2
 
 
+class IoULoss(nn.Module):
+    def __init__(self):
+        super(IoULoss, self).__init__()
+
+    def forward(self, pred, target):
+        pred = F.sigmoid(pred)
+        inter = torch.sum(pred * target, dim=(1, 2, 3))
+        union = torch.sum(pred + target, dim=(1, 2, 3)) - inter
+        iou = 1 - (inter + 1) / (union + 1)
+        return iou
+
 class GradientLoss(nn.Module):
     def __init__(self):
         super(GradientLoss, self).__init__()
@@ -96,8 +107,7 @@ class UALoss(nn.Module):
         ual_coef = self.get_coef(iter_percentage)
         sigmoid_x = seg_logits.sigmoid()
         loss_map = 1 - (2 * sigmoid_x - 1).abs().pow(2)
-        loss_map = torch.mean(loss_map, dim=(1, 2, 3), keepdim=False)
-        return loss_map * ual_coef
+        return loss_map.mean() * ual_coef
 
 
 class StructureLoss(nn.Module):
@@ -107,14 +117,46 @@ class StructureLoss(nn.Module):
     def forward(self, pred, mask):
         weit = 1 + 5 * torch.abs(F.avg_pool2d(mask, kernel_size=31, stride=1, padding=15) - mask)
         wbce = F.binary_cross_entropy_with_logits(pred, mask, reduction='none')
-        wbce = (weit * wbce).sum(dim=(1, 2, 3)) / weit.sum(dim=(1, 2, 3))
+        wbce = (weit * wbce).sum(dim=(2, 3)) / weit.sum(dim=(2, 3))
 
         pred = torch.sigmoid(pred)
-        inter = ((pred * mask) * weit).sum(dim=(1, 2, 3))
-        union = ((pred + mask) * weit).sum(dim=(1, 2, 3))
+        inter = ((pred * mask) * weit).sum(dim=(2, 3))
+        union = ((pred + mask) * weit).sum(dim=(2, 3))
         wiou = 1 - (inter + 1) / (union - inter + 1)
-        return wbce + wiou 
+        return (wbce + wiou).mean()
 
+
+class NLSSLoss(nn.Module):
+    def __init__(self):
+        super(NLSSLoss, self).__init__()
+        
+    def warmup_loss(self, preds, targets):
+        weit = 1 + 5 * torch.abs(F.avg_pool2d(targets, kernel_size=31, stride=1, padding=15) - targets)
+        wbce = F.binary_cross_entropy_with_logits(preds, targets, reduce='none')
+        wbce = (weit * wbce).sum(dim=(2, 3)) / weit.sum(dim=(2, 3))
+
+        preds = torch.sigmoid(preds)
+        inter = ((preds * targets) * weit).sum(dim=(2, 3))
+        union = ((preds + targets) * weit).sum(dim=(2, 3))
+        wiou = 1 - (inter + 1) / (union - inter + 1)
+        return (wbce + wiou).mean()
+
+    def denoise_loss(self, preds, targets, q):
+        preds = F.sigmoid(preds)
+        preds_flat = preds.contiguous().view(preds.shape[0], -1)
+        targets_flat = targets.contiguous().view(targets.shape[0], -1)
+        numerator = torch.sum(torch.abs(preds_flat - targets_flat) ** q, dim=1)
+        intersection = torch.sum(preds_flat * targets_flat, dim=1)
+        denominator = torch.sum(preds_flat, dim=1) + torch.sum(targets_flat, dim=1) - intersection + 1e-8
+        loss = numerator / denominator
+        return loss.mean()
+    
+    def forward(self, preds, targets, q):
+        if q == 2:
+            return self.warmup_loss(preds, targets)
+        if q == 1:
+            return self.denoise_loss(preds, targets) * 2
+        
 
 class NCLoss(nn.Module):
     def __init__(self):
@@ -123,8 +165,8 @@ class NCLoss(nn.Module):
     def wbce_loss(self, preds, targets):
         weit = 1 + 5 * torch.abs(F.avg_pool2d(targets, kernel_size=31, stride=1, padding=15) - targets)
         wbce = F.binary_cross_entropy_with_logits(preds, targets, reduce='none')
-        wbce = (weit * wbce).sum(dim=(1, 2, 3)) / weit.sum(dim=(1, 2, 3))
-        return wbce
+        wbce = (weit * wbce).sum(dim=(2, 3)) / weit.sum(dim=(2, 3))
+        return wbce.mean()
 
     def forward(self, preds, targets, q):
         wbce = self.wbce_loss(preds, targets)
@@ -136,9 +178,9 @@ class NCLoss(nn.Module):
         denominator = torch.sum(preds_flat, dim=1) + torch.sum(targets_flat, dim=1) - intersection + 1e-8
         loss = numerator / denominator
         if q == 2:
-            return loss + wbce
+            return loss.mean() + wbce
         if q == 1:
-            return loss * 2
+            return loss.mean() * 2
 
 class DiceLoss(nn.Module):
     def __init__(self):
@@ -154,4 +196,4 @@ class DiceLoss(nn.Module):
         num = torch.sum(torch.mul(predict, target) * valid_mask, dim=1) * 2 + smooth
         den = torch.sum((predict.pow(p) + target.pow(p)) * valid_mask, dim=1) + smooth
         loss = 1 - num / den
-        return loss
+        return loss.mean()

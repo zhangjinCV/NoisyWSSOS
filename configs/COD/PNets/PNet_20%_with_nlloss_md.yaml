@@ -5,31 +5,36 @@ max_save_num: 3
 dataset:
   train1:
     type: 'COSwithNoBox'
-    image_root: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/data/ANet/pseudo_label_80%/image/'
-    gt_root: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/data/ANet/pseudo_label_80%/mask/'
+    image_root: '/mnt/jixie16t/dataset/COD/CAMO_COD_train/image/'
+    gt_root: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/data/ANet/middle_remaining_80_percent%/mask/'
+    file_list: '/mnt/jixie16t/dataset/COD/CAMO_COD_train/LabelNoiseTrainList/remaining_middle_80_percent.txt'
     trainsize: 384
     istraining: true
-    batch_size: 12
+    batch_size: 24
     num_workers: 6
     shuffle: true
   train2:
     type: 'COSwithNoBox'
-    image_root: '/mnt/jixie16t/dataset/COD/LabelNoiseTrainDataset/CAMO_COD_train_20%/image/'
-    gt_root: '/mnt/jixie16t/dataset/COD/LabelNoiseTrainDataset/CAMO_COD_train_20%/mask/'
+    image_root: '/mnt/jixie16t/dataset/COD/CAMO_COD_train/image/'
+    gt_root: '/mnt/jixie16t/dataset/COD/CAMO_COD_train/mask/'
+    file_list: '/mnt/jixie16t/dataset/COD/CAMO_COD_train/LabelNoiseTrainList/middle_20_percent.txt'
     trainsize: 384
     istraining: true
-    batch_size: 3
+    batch_size: 6
     num_workers: 6
     shuffle: true
   val:
     type: 'COSwithNoBox'
-    image_root: '/mnt/jixie16t/dataset/COD/CAMO/image/'
-    gt_root: '/mnt/jixie16t/dataset/COD/CAMO/mask/'
+    image_root: '/mnt/jixie16t/dataset/COD/COD10K/image/'
+    gt_root: '/mnt/jixie16t/dataset/COD/COD10K/mask/'
+    file_list: '/mnt/jixie16t/dataset/COD/COD10K/namelist.txt'
     trainsize: 384
     istraining: false
     batch_size: 64
     num_workers: 6
     shuffle: false
+    pose_process: ['tensor_pose_processing_mask']
+    metric: ['MAE', 'IoU']
   test:
     type: 'COSwithNoBox'
     image_root: ['/mnt/jixie16t/dataset/COD/CHAMELEON_TestingDataset/image/', '/mnt/jixie16t/dataset/COD/CAMO/image/', '/mnt/jixie16t/dataset/COD/COD10K/image/', '/mnt/jixie16t/dataset/COD/NC4K/image/']
@@ -53,30 +58,30 @@ optimizer:
 scheduler:
   type: 'LinearCosineAnnealingLR'
   params:
-    max_lr: 0.0004
-    min_lr: 0.0000004
+    max_lr: 0.0001
+    min_lr: 0.0000001
     warmup_epochs: 5
     total_epochs: 100
 
 model:
   name: 'PNet'
   params:
-    backbone: 'res2net'
-    channels: 96
+    backbone: 'pvt'
+    channels: 64
 
 training:
   epochs: 100
   load: null
   q_epoch: 60
   pretrain: null
-  gpu_id: '0,1,2,3'
+  gpu_id: '1'
   best_mae: 1.0
   best_epoch: 1
   val_step: 1
   MASTER_ADDR: 'localhost'
-  MASTER_PORT: '12355'
-  save_path: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/PNet/20%_with_ncloss/'
-  find_unused_parameters: false
+  MASTER_PORT: '1235'
+  save_path: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/COD/PNet/20%_with_ncloss_middle_0.5/'
+  find_unused_parameters: true
   main_output_index: 4
   losses:
     loss1:

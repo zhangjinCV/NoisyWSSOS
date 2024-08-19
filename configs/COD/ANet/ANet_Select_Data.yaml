@@ -1,23 +1,23 @@
 seed: 2024
-save_iter: 1
+save_iter: 10
 max_save_num: 3
 
 dataset:
   train:
-    type: 'COSwithNoBox'
+    type: 'COSwithBox'
     image_root: '/mnt/jixie16t/dataset/COD/CAMO_COD_train/image/'
-    gt_root: '/mnt/jixie16t/dataset/COD/CAMO_COD_train/box/'
-    filelist: '/mnt/jixie16t/dataset/COD/CAMO_COD_train/namelist.txt'
+    gt_root: '/mnt/jixie16t/dataset/COD/CAMO_COD_train/mask/'
+    file_list: '/mnt/jixie16t/dataset/COD/CAMO_COD_train/LabelNoiseTrainList/top_20_percent.txt'
     trainsize: 384
     istraining: true
-    batch_size: 32
+    batch_size: 16
     num_workers: 12
     shuffle: true
   val:
-    type: 'COSwithNoBox'
+    type: 'COSwithBox'
     image_root: '/mnt/jixie16t/dataset/COD/CAMO_COD_train/image/'
-    gt_root: '/mnt/jixie16t/dataset/COD/CAMO_COD_train/box/'
-    filelist: '/mnt/jixie16t/dataset/COD/CAMO_COD_train/namelist.txt'
+    gt_root: '/mnt/jixie16t/dataset/COD/CAMO_COD_train/mask/'
+    file_list: '/mnt/jixie16t/dataset/COD/CAMO_COD_train/LabelNoiseTrainList/remaining_80_percent.txt'
     trainsize: 384
     istraining: false
     batch_size: 64
@@ -25,15 +25,16 @@ dataset:
     shuffle: false
   test:
     type: 'COSwithBox'
-    image_root: ['/mnt/jixie16t/dataset/COD/LabelNoiseTrainDataset/CAMO_COD_generate_80%/image/']
-    gt_root: ['/mnt/jixie16t/dataset/COD/LabelNoiseTrainDataset/CAMO_COD_generate_80%/mask/']
+    image_root: ['/mnt/jixie16t/dataset/COD/CAMO_COD_train/image/']
+    gt_root: ['/mnt/jixie16t/dataset/COD/CAMO_COD_train/mask/']
+    file_list: ['/mnt/jixie16t/dataset/COD/CAMO_COD_train/LabelNoiseTrainList/remaining_80_percent.txt']
     trainsize: 384
     istraining: false
     batch_size: 32
     num_workers: 6
     shuffle: false
-    save_path: ['/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/data/ANet/pseudo_label_80%_vflip/']
-    load: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/ANet/COD/20%/model_best.pth'
+    save_path: ['/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/data/ANet/remaining_80_percent%/']
+    load: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/COD/ANet/20%DS/model_best.pth'
     save_indices: [4, 8]
     save_index_names: ['mask', 'edge']
     pose_process: ['tensor_pose_processing_mask', 'tensor_pose_processing_edge']
@@ -47,32 +48,63 @@ optimizer:
 scheduler:
   type: 'LinearCosineAnnealingLR'
   params:
-    max_lr: 0.0001
-    min_lr: 0.0000001
-    warmup_epochs: 0
-    total_epochs: 100
+    max_lr: 0.0005
+    min_lr: 0.0000005
+    warmup_epochs: 5
+    total_epochs: 200
 
 model:
-  name: 'PANetDS'
+  name: 'PANet'
   params:
     channels: 64
 
 training:
-  epochs: 100
+  epochs: 200
   load: null
-  pretrain: null
+  pretrain: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/PANet/LVIS/epoch_50.pth'
   gpu_id: '0,1,2,3'
-  q_epoch: 20
   best_mae: 1.0
   best_epoch: 1
-  val_step: 10
+  val_step: 20
   MASTER_ADDR: 'localhost'
   MASTER_PORT: '12355'
-  save_path: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/COD/ANet/DS/'
-  find_unused_parameters: true
-  main_output_index: 0
+  save_path: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/COD/ANet/20%DS/'
+  find_unused_parameters: false
+  main_output_index: 4
   losses:
       loss1:
-        type: ['NCLoss']
+        type: ['StructureLoss']
         gt_input: ["gt"]
-        coef: [1]
+        coef: [0.0625]
+      loss2:
+        type: ['StructureLoss']
+        gt_input: ["gt"]
+        coef: [0.125]
+      loss3:
+        type: ['StructureLoss']
+        gt_input: ["gt"]
+        coef: [0.25]
+      loss4:
+        type: ['StructureLoss']
+        gt_input: ["gt"]
+        coef: [0.5]
+      loss5:
+        type: ['StructureLoss', 'UALoss']
+        gt_input: ["gt", "gt"]
+        coef: [1, 2]
+      loss6:
+        type: ['DiceLoss']
+        gt_input: ["edge"]
+        coef: [0]
+      loss7:
+        type: ['DiceLoss']
+        gt_input: ["edge"]
+        coef: [0.125]
+      loss8:
+        type: ['DiceLoss']
+        gt_input: ["edge"]
+        coef: [0.25]
+      loss9:
+        type: ['DiceLoss']
+        gt_input: ["edge"]
+        coef: [0.5]

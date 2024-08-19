@@ -25,15 +25,8 @@ def build_model(opt):
 
 def build_dataloader(opt, dataset_key):
     dataset_config = opt['dataset'][dataset_key]
-    
-    if isinstance(dataset_config['image_root'], list):
-        datasets = [get_dataset({**dataset_config, 'image_root': img_root, 'gt_root': gt_root, 'file_list': file_list}) 
-                    for img_root, gt_root, file_list in zip(dataset_config['image_root'], dataset_config['gt_root'], dataset_config['file_list'])]
-        dataset = torch.utils.data.ConcatDataset(datasets)
-    else:
-        dataset = get_dataset(dataset_config)
-    
-    dataloader = torch.utils.data.DataLoader(
+    dataset = get_dataset(opt, dataset_key)
+    dataloader = DataLoader(
         dataset=dataset,
         batch_size=dataset_config['batch_size'],
         num_workers=dataset_config['num_workers'],
