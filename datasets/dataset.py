@@ -35,7 +35,7 @@ def decode_segmentation(rle, height, width):
     })
 
 aug = A.Compose([
-    A.ColorJitter(0.6, 0.6, 0.6, 0.6),
+    A.ColorJitter(0.5, 0.5, 0.5, 0.5),
     A.HorizontalFlip(p=0.5),
     A.VerticalFlip(p=0.5),
     A.Flip(p=0.5),

@@ -78,10 +78,6 @@ def split_data_rate(ration=5):
 
 
 
-
-
-
-
 if __name__ == "__main__":
     split_data_rate(1)
     split_data_rate(5)

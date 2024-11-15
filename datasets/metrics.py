@@ -10,17 +10,16 @@ class MAE:
         self.best_epoch = 0
 
     def reset(self):
-        self.sum = 0
-        self.count = 0
+        self.maes = []
         
     def update(self, pred, gt):
         pred = pred / 255.
         gt = gt / 255.
-        self.sum += np.abs(pred - gt).mean()
-        self.count += 1
+        mae = np.abs(pred - gt).mean()
+        self.maes.append(mae)
 
     def compute(self):
-        return self.sum / self.count
+        return np.mean(self.maes)
 
 
 class IoU:
@@ -42,3 +41,23 @@ class IoU:
     def compute(self):
         return np.mean(self.ious)
     
+
+class ACC:
+    def __init__(self):
+        self.reset()    
+        self.best_score = 0.0
+        self.best_epoch = 0
+
+    def reset(self):
+        self.accs = []
+
+    def update(self, pred, gt):
+        pred = pred / 255.
+        gt = gt / 255.
+        gt = np.where(gt > 0.5, 1, 0)
+        pred = np.where(pred > 0.5, 1, 0)
+        acc = (pred == gt).mean()
+        self.accs.append(acc)
+
+    def compute(self):
+        return np.mean(self.accs)

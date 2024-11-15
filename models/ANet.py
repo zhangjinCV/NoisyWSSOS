@@ -192,8 +192,6 @@ class Branch(nn.Module):
         return f1_HH, f2_HH, f3_LL, f4_LL, x4
 
 
-
-
 class BasicConv2d(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1, need_relu=True,
                  bn=nn.BatchNorm2d):

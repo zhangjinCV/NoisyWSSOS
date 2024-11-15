@@ -53,7 +53,7 @@ def get_metric(metric_name):
 
 def build_dataloader(opt, dataset_key, world_size=None, rank=None):
     dataset_config = opt['dataset'][dataset_key]
-    dataset = get_dataset(opt, dataset_key, rank)
+    dataset = get_dataset(opt, dataset_key)
     if dataset_config['istraining'] and world_size is not None and rank is not None:
         sampler = torch.utils.data.distributed.DistributedSampler(dataset, num_replicas=world_size, rank=rank)
         dataloader = torch.utils.data.DataLoader(
@@ -61,7 +61,7 @@ def build_dataloader(opt, dataset_key, world_size=None, rank=None):
             batch_size=dataset_config['batch_size'], 
             num_workers=dataset_config['num_workers'], 
             sampler=sampler,
-            drop_last=False
+            drop_last=True
         )
         return dataloader, sampler
     else:
@@ -256,7 +256,7 @@ def train(rank, world_size, opt, loss_records):
 
             # 写一个1%概率保存图像可视化观察结果
             if random.random() < 0.1:
-                dest_img = data['image'][0].clone().cpu().data
+                dest_img = denormalize(data['image'][0].clone().cpu().data)
                 dest_img = (dest_img * 255.).to(torch.uint8)
                 dest_img = dest_img.permute(1, 2, 0).numpy()
                 cv2.imwrite(f'{save_path}/image.png', dest_img[:, :, ::-1])
@@ -264,7 +264,7 @@ def train(rank, world_size, opt, loss_records):
                 dest_gt = (dest_gt * 255.).to(torch.uint8)
                 dest_gt = dest_gt.permute(1, 2, 0).numpy()
                 cv2.imwrite(f'{save_path}/gt.png', dest_gt[:, :, ::-1])
-                dest_pre = (logits_list[opt['training']['main_output_index']]).clone()[0].cpu().data
+                dest_pre = (logits_list[opt['training']['main_output_index']]).clone()[0].cpu().sigmoid().data
                 dest_pre = (dest_pre * 255.).to(torch.uint8)
                 dest_pre = dest_pre.permute(1, 2, 0).numpy()
                 cv2.imwrite(f'{save_path}/pre.png', dest_pre[:, :, ::-1])
