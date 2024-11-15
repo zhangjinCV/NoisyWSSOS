@@ -51,12 +51,21 @@ def tensor_pose_processing_gt(tensor, data, j):
     return np_one
 
 
+def tensor_pose_processing_gt_no_resize(tensor, data, j):
+    if len(tensor.shape) == 3:
+        tensor = tensor.unsqueeze(0)
+    tensor = F.interpolate(tensor, size=(data['W'][j].item(), data['H'][j].item()), mode='bilinear')
+    tensor = tensor.cpu().numpy().squeeze() * 255
+    np_one = tensor.astype(np.uint8)
+    return np_one
+
+
 def tensor_pose_processing_mask(tensor, data, j):
     if len(tensor.shape) == 3:
         tensor = tensor.unsqueeze(0)
     tensor = tensor.sigmoid()
     tensor = F.interpolate(tensor, size=(data['W'][j].item(), data['H'][j].item()), mode='bilinear')
-    tensor = tensor.cpu().numpy().squeeze() * 255
+    tensor = tensor.cpu().detach().numpy().squeeze() * 255
     np_one = tensor.astype(np.uint8)
     return np_one
 
@@ -78,6 +87,17 @@ def tensor_pose_processing_inpainting(tensor, data, j):
     np_one = np_one.transpose(1, 2, 0)
     np_one = cv2.cvtColor(np_one, cv2.COLOR_RGB2BGR)
     return np_one
+
+
+def tensor_pose_processing_inpainting_no_resize(tensor, data, j):
+    if len(tensor.shape) == 3:
+        tensor = tensor.unsqueeze(0)
+    tensor = tensor.cpu().squeeze().numpy() * 255
+    np_one = tensor.astype(np.uint8)
+    np_one = np_one.transpose(1, 2, 0)
+    np_one = cv2.cvtColor(np_one, cv2.COLOR_RGB2BGR)
+    return np_one
+
 
 def save_checkpoint(model, optimizer, scheduler, epoch, path, opt):
     save_iter = opt['save_iter']

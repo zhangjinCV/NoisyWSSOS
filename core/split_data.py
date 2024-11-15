@@ -77,6 +77,11 @@ def split_data_rate(ration=5):
     print(len(os.listdir(f"/mnt/jixie16t/dataset/COD/CAMO_COD_train/LabelNoiseTrainDataset/train_{ration}%/image")), len(os.listdir(f"/mnt/jixie16t/dataset/COD/CAMO_COD_train/LabelNoiseTrainDataset/generate_{next_ration}%/image/")))
 
 
+
+
+
+
+
 if __name__ == "__main__":
     split_data_rate(1)
     split_data_rate(5)

@@ -10,7 +10,7 @@ import sys
 import cv2
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from models import *
-from utils import seed_torch, denormalize, tensor_pose_processing_mask, tensor_pose_processing_edge, tensor_pose_processing_inpainting
+from utils import seed_torch, denormalize, tensor_pose_processing_mask, tensor_pose_processing_edge, tensor_pose_processing_inpainting, tensor_pose_processing_inpainting_no_resize
 from torch.utils.data import DataLoader
 from torchvision.utils import make_grid
 import logging
@@ -25,7 +25,7 @@ def build_model(opt):
 
 def build_dataloader(opt, dataset_key):
     dataset_config = opt['dataset'][dataset_key]
-    dataset = get_dataset(opt, dataset_key)
+    dataset = get_dataset(opt, dataset_key, 1)
     dataloader = DataLoader(
         dataset=dataset,
         batch_size=dataset_config['batch_size'],
@@ -66,12 +66,11 @@ def val(opt):
                     opt['dataset'][key]['image_root'] = img_root
                     opt['dataset'][key]['gt_root'] = gt_root
                     opt['dataset'][key]['file_list'] = file_list
+                    print(img_root)
                     val_loader = build_dataloader(opt, key)
-                    
                     save_indices = opt['dataset']['test']['save_indices']
                     save_index_names = opt['dataset']['test']['save_index_names']
                     pose_process = [globals()[func_name] for func_name in opt['dataset']['test']['pose_process']]
-
                     save_paths = [os.path.join(save_path, name) for name in save_index_names]
                     for path in save_paths:
                         if not os.path.exists(path):
