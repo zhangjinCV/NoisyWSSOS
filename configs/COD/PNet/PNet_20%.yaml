@@ -5,51 +5,55 @@ max_save_num: 3
 dataset:
   train1:
     type: 'COSwithNoBox'
-    image_root: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/data/ANet/pseudo_label_90%/image/'
-    gt_root: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/data/ANet/pseudo_label_90%/mask/'
+    image_root: '/mnt/jixie16t/dataset/COD/CAMO_COD_train/image/'
+    gt_root: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/results/COD/ANet/coreset/remaining80/mask/'
+    file_list: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/COD/coreset/remaining80.txt'
     trainsize: 384
     istraining: true
     batch_size: 24
-    num_workers: 6
+    num_workers: 2
     shuffle: true
   train2:
     type: 'COSwithNoBox'
-    image_root: '/mnt/jixie16t/dataset/COD/LabelNoiseTrainDataset/CAMO_COD_train_10%/image/'
-    gt_root: '/mnt/jixie16t/dataset/COD/LabelNoiseTrainDataset/CAMO_COD_train_10%/mask/'
+    image_root: '/mnt/jixie16t/dataset/COD/CAMO_COD_train/image/'
+    gt_root: '/mnt/jixie16t/dataset/COD/CAMO_COD_train/mask/'
+    file_list: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/COD/coreset/coreset20.txt'
     trainsize: 384
     istraining: true
     batch_size: 6
-    num_workers: 6
+    num_workers: 2
     shuffle: true
-    repeat: 2
   val:
     type: 'COSwithNoBox'
-    image_root: '/mnt/jixie16t/dataset/COD/CAMO/image/'
-    gt_root: '/mnt/jixie16t/dataset/COD/CAMO/mask/'
+    image_root: '/mnt/jixie16t/dataset/COD/COD10K/image/'
+    gt_root: '/mnt/jixie16t/dataset/COD/COD10K/mask/'
+    file_list: '/mnt/jixie16t/dataset/COD/COD10K/namelist.txt'
     trainsize: 384
     istraining: false
-    batch_size: 64
-    num_workers: 6
+    batch_size: 12
+    num_workers: 2
     shuffle: false
+    pose_process: ['tensor_pose_processing_mask']
+    metric: ['MAE', 'IoU']
   test:
     type: 'COSwithNoBox'
     image_root: ['/mnt/jixie16t/dataset/COD/CHAMELEON_TestingDataset/image/', '/mnt/jixie16t/dataset/COD/CAMO/image/', '/mnt/jixie16t/dataset/COD/COD10K/image/', '/mnt/jixie16t/dataset/COD/NC4K/image/']
     gt_root: ['/mnt/jixie16t/dataset/COD/CHAMELEON_TestingDataset/mask/', '/mnt/jixie16t/dataset/COD/CAMO/mask/', '/mnt/jixie16t/dataset/COD/COD10K/mask/', '/mnt/jixie16t/dataset/COD/NC4K/mask/']
     trainsize: 384
     istraining: false
-    batch_size: 64
-    num_workers: 6
+    batch_size: 12
+    num_workers: 2
     shuffle: false
-    save_path: ['/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/data/PNets/PNet_10_ncloss/CHAMELEON_TestingDataset', '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/data/PNets/PNet_10_ncloss/CAMO', '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/data/PNets/PNet_10_ncloss/COD10K', '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/data/PNets/PNet_10_ncloss/NC4K']
-    load: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/PNet/10%_with_ncloss/model_best.pth'
+    save_path: ['/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/results/COD/PNet/20%/CHAMELEON_TestingDataset', '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/results/COD/PNet/20%/CAMO', '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/results/COD/PNet/20%/COD10K', '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/results/COD/PNet/20%/NC4K']
+    load: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/COD/PNet/20%/model_best.pth'
     save_indices: [4]
     save_index_names: ['']
     pose_process: ['tensor_pose_processing_mask']
 
 optimizer:
-  type: 'Adam'
+  type: 'AdamW'
   params:
-    lr: 0.0001
+    lr: 0.0004
 
 scheduler:
   type: 'LinearCosineAnnealingLR'
@@ -61,40 +65,42 @@ scheduler:
 
 model:
   name: 'PNet'
+  params:
+    channels: 64
 
 training:
   epochs: 100
   load: null
   q_epoch: 60
   pretrain: null
-  gpu_id: '0'
+  gpu_id: '1'
   best_mae: 1.0
   best_epoch: 1
   val_step: 1
   MASTER_ADDR: 'localhost'
-  MASTER_PORT: '12355'
-  save_path: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/PNet/10%_with_ncloss/'
+  MASTER_PORT: '1235'
+  save_path: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/COD/PNet/20%/'
   find_unused_parameters: true
   main_output_index: 4
   losses:
     loss1:
-      type: ['NCLoss']
+      type: ['StructureLoss']
       gt_input: ["gt"]
       coef: [0.0625]
     loss2:
-      type: ['NCLoss']
+      type: ['StructureLoss']
       gt_input: ["gt"]
       coef: [0.125]
     loss3:
-      type: ['NCLoss']
+      type: ['StructureLoss']
       gt_input: ["gt"]
       coef: [0.25]
     loss4:
-      type: ['NCLoss']
+      type: ['StructureLoss']
       gt_input: ["gt"]
       coef: [0.5]
     loss5:
-      type: ['NCLoss', 'UALoss']
+      type: ['StructureLoss', 'UALoss']
       gt_input: ["gt", "gt"]
       coef: [1, 2]
     loss6:

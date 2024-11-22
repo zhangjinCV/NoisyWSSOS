@@ -1,5 +1,5 @@
 seed: 2024
-save_iter: 10
+save_iter: 5
 max_save_num: 3
 
 dataset:
@@ -11,7 +11,7 @@ dataset:
     trainsize: 384
     istraining: true
     batch_size: 12
-    num_workers: 4
+    num_workers: 2
     shuffle: true
   val:
     type: 'COSwithBox'
@@ -20,8 +20,8 @@ dataset:
     file_list: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/COD/coreset/remaining80.txt'
     trainsize: 384
     istraining: false
-    batch_size: 64
-    num_workers: 4
+    batch_size: 1
+    num_workers: 1
     shuffle: false
     metric: ['MAE', 'IoU']
     pose_process: ['tensor_pose_processing_mask']
@@ -29,14 +29,14 @@ dataset:
     type: 'COSwithBox'
     image_root: ['/mnt/jixie16t/dataset/COD/CAMO_COD_train/image/']
     gt_root: ['/mnt/jixie16t/dataset/COD/CAMO_COD_train/mask/']
-    file_list: ['/mnt/jixie16t/dataset/COD/CAMO_COD_train/LabelNoiseTrainList/remaining_middle_80_percent.txt']
+    file_list: ['/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/COD/coreset/remaining90.txt']
     trainsize: 384
     istraining: false
-    batch_size: 32
-    num_workers: 6
+    batch_size: 64
+    num_workers: 4
     shuffle: false
-    save_path: ['/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/data/ANet/middle_remaining_80_percent%/']
-    load: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/COD/ANet/20%_middle/epoch_200.pth'
+    save_path: ['/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/results/COD/ANet/coreset/remaining80/']
+    load: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/COD/ANet/20%/epoch_100.pth'
     save_indices: [4, 8]
     save_index_names: ['mask', 'edge']
     pose_process: ['tensor_pose_processing_mask', 'tensor_pose_processing_edge']
@@ -62,14 +62,14 @@ model:
 
 training:
   epochs: 100
-  load: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/COD/ANet/20%/epoch_10.pth'
+  load: null
   pretrain: null
-  gpu_id: '0'
+  gpu_id: '3'
   best_mae: 1.0
   best_epoch: 1
-  val_step: 10
+  val_step: 50
   MASTER_ADDR: 'localhost'
-  MASTER_PORT: '12355'
+  MASTER_PORT: '12350'
   save_path: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/COD/ANet/20%/'
   find_unused_parameters: false
   main_output_index: 4

@@ -90,7 +90,7 @@ def select_according_max_entropy_torch(R, num, path_img, device='cuda:2'):
     """
     # Load and preprocess images
     image_np = [cv2.imread(path_img + r) for r in R]
-    image_np = [cv2.resize(img, (512, 512)).ravel() for img in image_np]
+    image_np = [cv2.resize(img, (384, 384)).ravel() for img in image_np]
 
     # Convert image data to PyTorch tensor and move to the specified device (CPU or GPU)
     image_tensor = torch.tensor(image_np, dtype=torch.float32).to(device)
@@ -145,26 +145,27 @@ def generate_namelist(path, save_path):
 
 
 if __name__ == '__main__':
-    # images = '/mnt/jixie16t/dataset/Polyp/TrainDataset/image'
-    # boxes = '/mnt/jixie16t/dataset/Polyp/TrainDataset/mask'
+    images = '/mnt/jixie16t/dataset/DIS5K/DIS-TR/im'
+    boxes = '/mnt/jixie16t/dataset/DIS5K/DIS-TR/gt'
     # scores = get_sim_socre_according_foreground_background(glob.glob(os.path.join(images, '*.jpg')), glob.glob(os.path.join(boxes, '*.png')), '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/Polyp/coreset/coreset_select.txt')
     # MDE_coreset("/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/Polyp/coreset/coreset_select.txt", 0.2, 0.1, 5, images + '/', '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/Polyp/coreset/coreset')
     # MDE_coreset("/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/Polyp/coreset/coreset_select.txt", 0.01, 0.1, 5, images + '/', '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/Polyp/coreset/coreset')
     # MDE_coreset("/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/Polyp/coreset/coreset_select.txt", 0.05, 0.1, 5, images + '/', '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/Polyp/coreset/coreset')
     # MDE_coreset("/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/Polyp/coreset/coreset_select.txt", 0.1, 0.1, 5, images + '/', '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/Polyp/coreset/coreset')
-    generate_namelist('/mnt/jixie16t/dataset/Polyp/TrainDataset/image', '/mnt/jixie16t/dataset/Polyp/TrainDataset/namelist.txt')
-    remaining_set('/mnt/jixie16t/dataset/Polyp/TrainDataset/namelist.txt', '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/Polyp/coreset/coreset20.txt', '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/Polyp/coreset/remaining80.txt')
-    remaining_set('/mnt/jixie16t/dataset/Polyp/TrainDataset/namelist.txt', '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/Polyp/coreset/coreset1.txt', '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/Polyp/coreset/remaining99.txt')
-    remaining_set('/mnt/jixie16t/dataset/Polyp/TrainDataset/namelist.txt', '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/Polyp/coreset/coreset5.txt', '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/Polyp/coreset/remaining95.txt')
-    remaining_set('/mnt/jixie16t/dataset/Polyp/TrainDataset/namelist.txt', '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/Polyp/coreset/coreset10.txt', '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/Polyp/coreset/remaining90.txt')
+    # MDE_coreset("/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/DIS5K/coreset/coreset_select.txt", 0.3, 0.1, 5, images + '/', '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/DIS5K/coreset/coreset')
+    # generate_namelist('/mnt/jixie16t/dataset/Polyp/TrainDataset/image', '/mnt/jixie16t/dataset/Polyp/TrainDataset/namelist.txt')
+    # remaining_set('/mnt/jixie16t/dataset/Polyp/TrainDataset/namelist.txt', '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/Polyp/coreset/coreset20.txt', '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/Polyp/coreset/remaining80.txt')
+    # remaining_set('/mnt/jixie16t/dataset/Polyp/TrainDataset/namelist.txt', '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/Polyp/coreset/coreset1.txt', '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/Polyp/coreset/remaining99.txt')
+    # remaining_set('/mnt/jixie16t/dataset/Polyp/TrainDataset/namelist.txt', '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/Polyp/coreset/coreset5.txt', '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/Polyp/coreset/remaining95.txt')
+    remaining_set('/mnt/jixie16t/dataset/Polyp/TrainDataset/namelist.txt', '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/Polyp/coreset/coreset30.txt', '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/Polyp/coreset/remaining70.txt')
 
-    remaining_set("/mnt/jixie16t/dataset/COD/CAMO_COD_train/namelist.txt", "/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/COD/coreset/coreset20.txt", "/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/COD/coreset/remaining80.txt")
-    remaining_set("/mnt/jixie16t/dataset/COD/CAMO_COD_train/namelist.txt", "/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/COD/coreset/coreset1.txt", "/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/COD/coreset/remaining99.txt")
-    remaining_set("/mnt/jixie16t/dataset/COD/CAMO_COD_train/namelist.txt", "/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/COD/coreset/coreset5.txt", "/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/COD/coreset/remaining95.txt")
-    remaining_set("/mnt/jixie16t/dataset/COD/CAMO_COD_train/namelist.txt", "/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/COD/coreset/coreset10.txt", "/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/COD/coreset/remaining90.txt")
+    # remaining_set("/mnt/jixie16t/dataset/COD/CAMO_COD_train/namelist.txt", "/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/COD/coreset/coreset20.txt", "/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/COD/coreset/remaining80.txt")
+    # remaining_set("/mnt/jixie16t/dataset/COD/CAMO_COD_train/namelist.txt", "/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/COD/coreset/coreset1.txt", "/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/COD/coreset/remaining99.txt")
+    # remaining_set("/mnt/jixie16t/dataset/COD/CAMO_COD_train/namelist.txt", "/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/COD/coreset/coreset5.txt", "/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/COD/coreset/remaining95.txt")
+    remaining_set("/mnt/jixie16t/dataset/COD/CAMO_COD_train/namelist.txt", "/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/COD/coreset/coreset30.txt", "/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/COD/coreset/remaining70.txt")
     
-    generate_namelist("/mnt/jixie16t/dataset/DIS5K/DIS-TR/im", "/mnt/jixie16t/dataset/DIS5K/DIS-TR/namelist.txt")
-    remaining_set("/mnt/jixie16t/dataset/DIS5K/DIS-TR/namelist.txt", "/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/DIS5K/coreset/coreset20.txt", "/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/DIS5K/coreset/remaining80.txt")
-    remaining_set("/mnt/jixie16t/dataset/DIS5K/DIS-TR/namelist.txt", "/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/DIS5K/coreset/coreset1.txt", "/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/DIS5K/coreset/remaining99.txt")
-    remaining_set("/mnt/jixie16t/dataset/DIS5K/DIS-TR/namelist.txt", "/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/DIS5K/coreset/coreset5.txt", "/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/DIS5K/coreset/remaining95.txt")
-    remaining_set("/mnt/jixie16t/dataset/DIS5K/DIS-TR/namelist.txt", "/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/DIS5K/coreset/coreset10.txt", "/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/DIS5K/coreset/remaining90.txt")
+    # generate_namelist("/mnt/jixie16t/dataset/DIS5K/DIS-TR/im", "/mnt/jixie16t/dataset/DIS5K/DIS-TR/namelist.txt")
+    # remaining_set("/mnt/jixie16t/dataset/DIS5K/DIS-TR/namelist.txt", "/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/DIS5K/coreset/coreset20.txt", "/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/DIS5K/coreset/remaining80.txt")
+    # remaining_set("/mnt/jixie16t/dataset/DIS5K/DIS-TR/namelist.txt", "/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/DIS5K/coreset/coreset1.txt", "/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/DIS5K/coreset/remaining99.txt")
+    # remaining_set("/mnt/jixie16t/dataset/DIS5K/DIS-TR/namelist.txt", "/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/DIS5K/coreset/coreset5.txt", "/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/DIS5K/coreset/remaining95.txt")
+    remaining_set("/mnt/jixie16t/dataset/DIS5K/DIS-TR/namelist.txt", "/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/DIS5K/coreset/coreset30.txt", "/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/DIS5K/coreset/remaining70.txt")

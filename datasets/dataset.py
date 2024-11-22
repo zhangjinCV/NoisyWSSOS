@@ -10,7 +10,10 @@ import albumentations as A
 from pycocotools import mask as ppmask
 import json, glob, cv2, tqdm 
 from torch.nn import functional as F
-
+from PIL import ImageFile
+ImageFile.LOAD_TRUNCATED_IMAGES = True
+Image.MAX_IMAGE_PIXELS = None
+import copy
 
 def seed_torch(seed=2024):
     random.seed(seed)
@@ -293,6 +296,83 @@ class ImageInpainting(data.Dataset):
         return self.size
 
 
+class ZoomNeXtDataset(data.Dataset):
+    def __init__(self, image_root, gt_root, file_list, trainsize, istraining=True, repeat=1, **kwargs):
+        self.trainsize = trainsize
+        self.istraining = istraining
+        self.gts = [os.path.join(gt_root, fname.replace('.jpg', '.png')) for fname in read_filenames(file_list)]
+        self.images = [os.path.join(image_root, fname) for fname in read_filenames(file_list)]
+        self.edges = [i.replace("mask", "edge") for i in self.gts]
+
+        self.check_pairs(self.images, self.gts, self.edges)
+        
+        if self.istraining:
+            self.images = np.array(sorted(self.images))
+            self.gts = np.array(sorted(self.gts))
+            self.edges = np.array(sorted(self.edges))
+        else:
+            self.images = np.array(sorted(self.images))
+            self.gts = np.array(sorted(self.gts))
+
+        self.img_transform = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        ])
+        self.gt_transform = transforms.Compose([
+            transforms.Resize((self.trainsize, self.trainsize)),
+            transforms.ToTensor()
+        ])
+        self.size = len(self.images)
+
+    def __getitem__(self, index):
+        image = self.rgb_loader(self.images[index])
+        name = os.path.basename(self.images[index])
+        gt = self.binary_loader(self.gts[index])
+        H, W = image.size
+        if self.istraining:
+            edge = self.binary_loader(self.edges[index])
+            image, gt, edge = np.array(image).astype(np.uint8), np.array(gt).astype(np.uint8), np.array(edge).astype(np.uint8)
+            augmented = aug(image=image, mask=gt, edge=edge)
+            image, gt, edge = augmented['image'], augmented['mask'], augmented['edge']
+            # image, gt, edge = Image.fromarray(image),  Image.fromarray(gt), Image.fromarray(edge)
+        image_s = self.img_transform(Image.fromarray(cv2.resize(copy.deepcopy(image), dsize=(224, 224))))
+        image_m = self.img_transform(Image.fromarray(cv2.resize(copy.deepcopy(image), dsize=(352, 352))))
+        image_l = self.img_transform(Image.fromarray(cv2.resize(copy.deepcopy(image), dsize=(512, 512))))
+        gt = Image.fromarray(gt)
+        gt = self.gt_transform(gt)
+        if self.istraining:
+            edge = Image.fromarray(edge)
+            edge = self.gt_transform(edge)
+            return {'image': image_m, 'image_s':image_s, 'image_l':image_l, 'gt': gt, 'edge': edge, 'H': H, 'W': W, 'name': name}
+        else:
+            return {'image': image, 'gt': gt, 'H': H, 'W': W, 'name': name}
+
+    def rgb_loader(self, path):
+        with open(path, 'rb') as f:
+            img = Image.open(f)
+            return img.convert('RGB')
+
+    def binary_loader(self, path):
+        with open(path, 'rb') as f:
+            img = Image.open(f)
+            return img.convert('L')
+    
+    def check_pairs(self, images, gts, edges):
+        print("checking dataset pairs")
+        if self.istraining:
+            for img, gt, edge in tqdm.tqdm(zip(images, gts, edges)):
+                assert os.path.exists(img), f"Image file {img} does not exist"
+                assert os.path.exists(gt), f"GT file {gt} does not exist"
+                assert os.path.exists(edge), f"Edge file {edge} does not exist"
+        else:
+            for img, gt in tqdm.tqdm(zip(images, gts)):
+                assert os.path.exists(img), f"Image file {img} does not exist"
+                assert os.path.exists(gt), f"GT file {gt} does not exist"
+        print("check dataset pass!")
+    def __len__(self):
+        return self.size
+    
+
 class COSwithNoBox(data.Dataset):
     def __init__(self, image_root, gt_root, file_list, trainsize, istraining=True, repeat=1, **kwargs):
         self.trainsize = trainsize
@@ -373,7 +453,11 @@ class COSwithBox(data.Dataset):
         self.istraining = istraining
         self.gts = [os.path.join(gt_root, fname.replace('.jpg', '.png')) for fname in read_filenames(file_list)]
         self.images = [os.path.join(image_root, fname) for fname in read_filenames(file_list)]
-        self.bbox_gts = [i.replace("mask", "box") for i in self.gts]
+        if 'box_root' in kwargs:
+            box_root = kwargs['box_root']
+            self.bbox_gts = [os.path.join(box_root, fname.replace('.jpg', '.png')) for fname in read_filenames(file_list)]
+        else:
+            self.bbox_gts = [i.replace("mask", "box") for i in self.gts]
         self.edges = [i.replace("mask", "edge") for i in self.gts]
 
         self.check_pairs(self.images, self.gts, self.bbox_gts, self.edges)
@@ -393,6 +477,10 @@ class COSwithBox(data.Dataset):
             transforms.ToTensor(),
             transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
         ])
+        self.bbox_resize_aug = A.Compose([
+            A.Affine(scale=(0.8, 1.2)),  # Resize bounding box with scaling between 0.8x to 1.2x
+        ], additional_targets={'bbox_image': 'mask'})
+
         self.gt_transform = transforms.Compose([
             transforms.Resize((self.trainsize, self.trainsize)),
             transforms.ToTensor()
@@ -401,12 +489,18 @@ class COSwithBox(data.Dataset):
 
     def __getitem__(self, index):
         image = self.rgb_loader(self.images[index])
+        H, W = image.size
         name = os.path.basename(self.images[index])
         gt = self.binary_loader(self.gts[index])
         bbox = self.rgb_loader(self.bbox_gts[index])
+        if self.istraining:
+            bbox = self.bbox_resize_aug(image=np.array(image), bbox_image=np.array(bbox))['bbox_image']
+        else:
+            bbox = np.array(bbox)
+        bbox = cv2.resize(bbox, (H, W))
         bbox_image = np.array(bbox) / 255. * np.array(image)
         bbox_image = Image.fromarray(bbox_image.astype(np.uint8))
-        H, W = image.size
+        
         if self.istraining:
             edge = self.binary_loader(self.edges[index])
             image, bbox_image, gt, edge = np.array(image).astype(np.uint8), np.array(bbox_image).astype(

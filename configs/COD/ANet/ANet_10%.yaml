@@ -1,72 +1,75 @@
 seed: 2024
-save_iter: 10
+save_iter: 5
 max_save_num: 3
 
 dataset:
-  train:
+  train1:
     type: 'COSwithBox'
     image_root: '/mnt/jixie16t/dataset/COD/CAMO_COD_train/image/'
     gt_root: '/mnt/jixie16t/dataset/COD/CAMO_COD_train/mask/'
-    file_list: '/mnt/jixie16t/dataset/COD/CAMO_COD_train/LabelNoiseTrainList/top_10_percent_similarities.txt'
+    file_list: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/COD/coreset/coreset10.txt'
     trainsize: 384
     istraining: true
-    batch_size: 16
-    num_workers: 12
+    batch_size: 12
+    num_workers: 2
     shuffle: true
   val:
     type: 'COSwithBox'
     image_root: '/mnt/jixie16t/dataset/COD/CAMO_COD_train/image/'
     gt_root: '/mnt/jixie16t/dataset/COD/CAMO_COD_train/mask/'
-    file_list: '/mnt/jixie16t/dataset/COD/CAMO_COD_train/LabelNoiseTrainList/namelist_generate_90.0%.txt'
+    file_list: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/COD/coreset/remaining90.txt'
+    trainsize: 384
+    istraining: false
+    batch_size: 1
+    num_workers: 1
+    shuffle: false
+    metric: ['MAE', 'IoU']
+    pose_process: ['tensor_pose_processing_mask']
+  test:
+    type: 'COSwithBox'
+    image_root: ['/mnt/jixie16t/dataset/COD/CAMO_COD_train/image/']
+    gt_root: ['/mnt/jixie16t/dataset/COD/CAMO_COD_train/mask/']
+    file_list: ['/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/COD/coreset/remaining90.txt']
     trainsize: 384
     istraining: false
     batch_size: 64
-    num_workers: 12
+    num_workers: 4
     shuffle: false
-  test:
-    type: 'COSwithBox'
-    image_root: ['/mnt/jixie16t/dataset/COD/LabelNoiseTrainDataset/CAMO_COD_generate_80%/image/']
-    gt_root: ['/mnt/jixie16t/dataset/COD/LabelNoiseTrainDataset/CAMO_COD_generate_80%/mask/']
-    trainsize: 384
-    istraining: false
-    batch_size: 32
-    num_workers: 6
-    shuffle: false
-    save_path: ['/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/data/ANet/pseudo_label_80%_vflip/']
-    load: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/ANet/COD/20%/model_best.pth'
+    save_path: ['/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/results/COD/ANet/coreset/remaining90/']
+    load: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/COD/ANet/10%/epoch_100.pth'
     save_indices: [4, 8]
     save_index_names: ['mask', 'edge']
     pose_process: ['tensor_pose_processing_mask', 'tensor_pose_processing_edge']
 
 
 optimizer:
-  type: 'Adam'
+  type: 'AdamW'
   params:
     lr: 0.0001
 
 scheduler:
   type: 'LinearCosineAnnealingLR'
   params:
-    max_lr: 0.0005
-    min_lr: 0.0000005
+    max_lr: 0.0001
+    min_lr: 0.0000001
     warmup_epochs: 5
-    total_epochs: 200
+    total_epochs: 100
 
 model:
-  name: 'PANet'
+  name: 'ANet'
   params:
     channels: 64
 
 training:
-  epochs: 200
-  load: null
+  epochs: 100
+  load: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/COD/ANet/10%/epoch_45.pth'
   pretrain: null
-  gpu_id: '0,1,2,3'
+  gpu_id: '2'
   best_mae: 1.0
   best_epoch: 1
-  val_step: 20
+  val_step: 50
   MASTER_ADDR: 'localhost'
-  MASTER_PORT: '12355'
+  MASTER_PORT: '12356'
   save_path: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/COD/ANet/10%/'
   find_unused_parameters: false
   main_output_index: 4

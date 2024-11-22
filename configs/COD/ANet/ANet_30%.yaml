@@ -1,5 +1,5 @@
 seed: 2024
-save_iter: 10
+save_iter: 5
 max_save_num: 3
 
 dataset:
@@ -7,21 +7,21 @@ dataset:
     type: 'COSwithBox'
     image_root: '/mnt/jixie16t/dataset/COD/CAMO_COD_train/image/'
     gt_root: '/mnt/jixie16t/dataset/COD/CAMO_COD_train/mask/'
-    file_list: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/COD/coreset/coreset5.txt'
+    file_list: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/COD/coreset/coreset30.txt'
     trainsize: 384
     istraining: true
     batch_size: 12
-    num_workers: 2
+    num_workers: 6
     shuffle: true
   val:
     type: 'COSwithBox'
     image_root: '/mnt/jixie16t/dataset/COD/CAMO_COD_train/image/'
     gt_root: '/mnt/jixie16t/dataset/COD/CAMO_COD_train/mask/'
-    file_list: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/COD/coreset/remaining95.txt'
+    file_list: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/COD/coreset/remaining70.txt'
     trainsize: 384
     istraining: false
-    batch_size: 64
-    num_workers: 4
+    batch_size: 1
+    num_workers: 1
     shuffle: false
     metric: ['MAE', 'IoU']
     pose_process: ['tensor_pose_processing_mask']
@@ -29,14 +29,14 @@ dataset:
     type: 'COSwithBox'
     image_root: ['/mnt/jixie16t/dataset/COD/CAMO_COD_train/image/']
     gt_root: ['/mnt/jixie16t/dataset/COD/CAMO_COD_train/mask/']
-    file_list: ['/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/COD/coreset/remaining95.txt']
+    file_list: ['/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/COD/coreset/remaining70.txt']
     trainsize: 384
     istraining: false
     batch_size: 64
     num_workers: 4
     shuffle: false
-    save_path: ['/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/results/COD/ANet/coreset/remaining95/']
-    load: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/COD/ANet/5%/epoch_100.pth'
+    save_path: ['/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/results/COD/ANet/coreset/remaining70/']
+    load: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/COD/ANet/30%/epoch_100.pth'
     save_indices: [4, 8]
     save_index_names: ['mask', 'edge']
     pose_process: ['tensor_pose_processing_mask', 'tensor_pose_processing_edge']
@@ -67,10 +67,10 @@ training:
   gpu_id: '0'
   best_mae: 1.0
   best_epoch: 1
-  val_step: 10
+  val_step: 50
   MASTER_ADDR: 'localhost'
-  MASTER_PORT: '12356'
-  save_path: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/COD/ANet/5%/'
+  MASTER_PORT: '12351'
+  save_path: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/COD/ANet/30%/'
   find_unused_parameters: false
   main_output_index: 4
   losses:

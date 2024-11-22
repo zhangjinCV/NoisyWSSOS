@@ -221,6 +221,7 @@ class PyramidVisionTransformerV2(nn.Module):
         self.num_classes = num_classes
         self.depths = depths
         self.num_stages = num_stages
+        self.embed_dims = embed_dims
 
         dpr = [x.item() for x in torch.linspace(0, drop_path_rate, sum(depths))]  # stochastic depth decay rule
         cur = 0

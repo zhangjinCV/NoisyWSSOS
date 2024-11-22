@@ -25,7 +25,7 @@ def build_model(opt):
 
 def build_dataloader(opt, dataset_key):
     dataset_config = opt['dataset'][dataset_key]
-    dataset = get_dataset(opt, dataset_key, 1)
+    dataset = get_dataset(opt, dataset_key)
     dataloader = DataLoader(
         dataset=dataset,
         batch_size=dataset_config['batch_size'],

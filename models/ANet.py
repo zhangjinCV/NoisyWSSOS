@@ -2,8 +2,6 @@ import torch.nn as nn
 import torch
 import torch.nn.functional as F
 from .ConvNeXt import convnext_base, convnext_large
-from .losses import NCLoss, DiceLoss, StructureLoss, UALoss
-
 
 
 class ANet(nn.Module):
@@ -18,11 +16,6 @@ class ANet(nn.Module):
         self.fusion5 = MCG(1536, 1536)
         self.GPM = GPM(1536)
         self.decoder = UNetDecoderWithEdges(channels, channels)
-        self.nc_loss = NCLoss()
-        self.dice_loss = DiceLoss()
-        self.structure_loss = StructureLoss()
-        self.cal_ual = UALoss()
-
 
     def forward(self, data):
         x = data['image']
@@ -44,21 +37,6 @@ class ANet(nn.Module):
             x)
         preds = [pred_0, f4, f3, f2, f1, bound_f4, bound_f3, bound_f2, bound_f1]
         return {"res": preds}
-    
-    def cal_loss(self, preds_dict, data):
-        gts = data['gt']
-        edges = data.get('edge')
-        preds = preds_dict.get("res")
-        i = data['tmp_iter']
-        total_step = data['total_step']
-
-        loss_ual = self.cal_ual(preds[0], gts, i / total_step)
-
-        loss_init = self.structure_loss(preds[0], gts)*0.0625 + self.structure_loss(preds[1], gts)*0.125 + self.structure_loss(preds[2], gts)*0.25 + self.structure_loss(preds[3], gts)*0.5
-        loss_final = self.structure_loss(preds[4], gts)
-        loss_edge = self.dice_loss(preds[6], edges)*0.125 + self.dice_loss(preds[7], edges)*0.25 + self.dice_loss(preds[8], edges)*0.5
-        loss = loss_init + loss_final + loss_edge * 4 + 2 * loss_ual
-        return loss
 
 
 class h_sigmoid(nn.Module):

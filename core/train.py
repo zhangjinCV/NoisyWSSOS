@@ -61,7 +61,7 @@ def build_dataloader(opt, dataset_key, world_size=None, rank=None):
             batch_size=dataset_config['batch_size'], 
             num_workers=dataset_config['num_workers'], 
             sampler=sampler,
-            drop_last=True
+            drop_last=False
         )
         return dataloader, sampler
     else:
@@ -153,12 +153,17 @@ def train(rank, world_size, opt, loss_records):
     optimizer = build_optimizer(opt, model)
     scheduler = build_scheduler(opt, optimizer)
 
-    dataloaders = {key: build_dataloader(opt, key, world_size, rank) for key in opt['dataset'] if 'test' != key}
+    is_validation = opt['training'].get('is_validation', True)
+    if is_validation:
+        keys = [key for key in opt['dataset'] if 'test' != key]
+    else:
+        keys = [key for key in opt['dataset'] if 'train' in key]
+    dataloaders = {key: build_dataloader(opt, key, world_size, rank) for key in keys}
     train_loaders = {key: dataloaders[key][0] for key in dataloaders.keys() if 'train' in key}
     print(len(train_loaders))
     samplers = {key: dataloaders[key][1] for key in dataloaders.keys() if 'train' in key}
-    val_loader = dataloaders['val'][0]
-    val_metrics = {metric_name: get_metric(metric_name) for metric_name in opt['dataset']['val']['metric']}
+    val_loader = dataloaders['val'][0] if is_validation else None
+    val_metrics = {metric_name: get_metric(metric_name) for metric_name in opt['dataset']['val']['metric']} if is_validation else None
 
     start_epoch = 1
     if opt['training']['load'] is not None and os.path.exists(opt['training']['load']):
@@ -242,32 +247,17 @@ def train(rank, world_size, opt, loss_records):
             logits_list = model(data)['res']
             loss_list = loss_computation(logits_list, data, losses, opt)
             loss = sum(loss_list)
-            with torch.autograd.set_detect_anomaly(True):
-                loss.backward()
-            optimizer.step()
-            # scaler.scale(loss).backward()
-            # scaler.step(optimizer)
-            # scaler.update()
+            # with torch.autograd.set_detect_anomaly(True):
+            #     loss.backward()
+            # optimizer.step()
+            scaler.scale(loss).backward()
+            scaler.step(optimizer)
+            scaler.update()
             
             step += 1
             epoch_step += 1
             finished_iters = epoch_step + epoch * total_step
             loss_all += loss.item()
-
-            # 写一个1%概率保存图像可视化观察结果
-            if random.random() < 0.1:
-                dest_img = denormalize(data['image'][0].clone().cpu().data)
-                dest_img = (dest_img * 255.).to(torch.uint8)
-                dest_img = dest_img.permute(1, 2, 0).numpy()
-                cv2.imwrite(f'{save_path}/image.png', dest_img[:, :, ::-1])
-                dest_gt = data['gt'][0].clone().cpu().data
-                dest_gt = (dest_gt * 255.).to(torch.uint8)
-                dest_gt = dest_gt.permute(1, 2, 0).numpy()
-                cv2.imwrite(f'{save_path}/gt.png', dest_gt[:, :, ::-1])
-                dest_pre = (logits_list[opt['training']['main_output_index']]).clone()[0].cpu().sigmoid().data
-                dest_pre = (dest_pre * 255.).to(torch.uint8)
-                dest_pre = dest_pre.permute(1, 2, 0).numpy()
-                cv2.imwrite(f'{save_path}/pre.png', dest_pre[:, :, ::-1])
 
             if rank == 0 and (i % 20 == 0 or i == total_step or i == 1):
                 
@@ -298,6 +288,10 @@ def train(rank, world_size, opt, loss_records):
                 grid_image_2 = make_grid(pre, 1, normalize=False)
                 writer.add_image('Pre', grid_image_2, step)
 
+                if 'bbox_image' in data:
+                    grid_image = make_grid(denormalize(data['bbox_image'][0].clone().cpu().data), 1, normalize=True)
+                    writer.add_image('BBox', grid_image, step)
+
                 grid_image = make_grid(denormalize(data['image'][1].clone().cpu().sigmoid().data), 1, normalize=True)
                 writer.add_image('RGB2', grid_image, step)
             data_end_time = datetime.now()
@@ -309,7 +303,7 @@ def train(rank, world_size, opt, loss_records):
             writer.add_scalar('Loss-epoch', loss_all, global_step=epoch)
         if rank == 0:
             save_checkpoint(model, optimizer, scheduler, epoch, save_path, opt)
-        if rank == 0 and (epoch % opt['training']['val_step'] == 0):
+        if rank == 0 and (epoch % opt['training']['val_step'] == 0) and is_validation:
             val(val_loader, model, epoch, save_path, writer, opt, val_metrics)
 
 
