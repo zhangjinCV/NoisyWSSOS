@@ -1,27 +1,27 @@
 seed: 2024
-save_iter: 5
+save_iter: 1
 max_save_num: 3
 
 dataset:
   train1:
     type: 'COSwithBox'
-    image_root: '/mnt/jixie16t/dataset/COD/CAMO_COD_train/image/'
-    gt_root: '/mnt/jixie16t/dataset/COD/CAMO_COD_train/mask/'
-    file_list: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/COD/coreset/coreset20.txt'
-    trainsize: 384
+    image_root: '/mnt/jixie16t/dataset/LVIS/image/'
+    gt_root: '/mnt/jixie16t/dataset/LVIS/mask/'
+    file_list: '/mnt/jixie16t/dataset/LVIS/namelist.txt'
+    trainsize: 320
     istraining: true
-    batch_size: 24
-    num_workers: 4
+    batch_size: 32
+    num_workers: 2
     shuffle: true
   val:
     type: 'COSwithBox'
     image_root: '/mnt/jixie16t/dataset/COD/CAMO_COD_train/image/'
     gt_root: '/mnt/jixie16t/dataset/COD/CAMO_COD_train/mask/'
     file_list: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/COD/coreset/remaining80.txt'
-    trainsize: 384
+    trainsize: 320
     istraining: false
-    batch_size: 24
-    num_workers: 6
+    batch_size: 32
+    num_workers: 4
     shuffle: false
     metric: ['MAE', 'IoU']
     pose_process: ['tensor_pose_processing_mask']
@@ -64,13 +64,13 @@ training:
   epochs: 200
   load: null
   pretrain: null
-  gpu_id: '0'
+  gpu_id: '0,1,2,3'
   best_mae: 1.0
   best_epoch: 1
-  val_step: 50
+  val_step: 5
   MASTER_ADDR: 'localhost'
   MASTER_PORT: '12350'
-  save_path: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/COD/PANet/20%/'
+  save_path: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/PANet/LVIS/'
   find_unused_parameters: false
   main_output_index: 4
   losses:

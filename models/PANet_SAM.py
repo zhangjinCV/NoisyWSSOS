@@ -1,15 +1,136 @@
 import torch.nn as nn
 import torch
 import torch.nn.functional as F
-from .ConvNeXt import convnext_large
+from .ConvNeXt import convnext_base, convnext_large
+from .caformer import caformer_m36_384_in21ft1k
 
 
-class PANetDS(nn.Module):
+class ANet_CAFormer(nn.Module):
     def __init__(self, channels=64):
-        super(PANetDS, self).__init__()
-        self.shared_encoder = convnext_large()
+        super(ANet_CAFormer, self).__init__()
+        self.net1 = Branch()
+        self.net2 = Branch()
+        self.fusion1 = MCG(channels, channels)
+        self.fusion2 = MCG(channels, channels)
+        self.fusion3 = MCG(channels, channels)
+        self.fusion4 = MCG(channels, channels)
+        self.fusion5 = MCG(576, 576)
+        self.GPM = GPM(576)
+        self.decoder = UNetDecoderWithEdges(channels, channels)
 
-        self.GCM3 = GCM3([192, 384, 768, 1536], channels)
+    def forward(self, data):
+        x = data['image']
+        x_box = data.get('bbox_image')
+        
+        f1_HH1, f2_HH1, f3_LL1, f4_LL1, x41 = self.net1(x)
+        f1_HH2, f2_HH2, f3_LL2, f4_LL2, x42 = self.net2(x_box)
+
+        f1_HH = self.fusion1(f1_HH1, f1_HH2)
+        f2_HH = self.fusion2(f2_HH1, f2_HH2)
+        f3_LL = self.fusion3(f3_LL1, f3_LL2)
+        f4_LL = self.fusion4(f4_LL1, f4_LL2)
+        x4 = self.fusion5(x41, x42)
+
+        prior_cam = self.GPM(x4)
+        pred_0 = F.interpolate(prior_cam, size=x.size()[2:], mode='bilinear', align_corners=False)
+        f4, f3, f2, f1, bound_f4, bound_f3, bound_f2, bound_f1 = self.decoder(
+            [f1_HH, f2_HH, f3_LL, f4_LL], prior_cam,
+            x)
+        preds = [pred_0, f4, f3, f2, f1, bound_f4, bound_f3, bound_f2, bound_f1]
+        return {"res": preds}
+
+
+class h_sigmoid(nn.Module):
+    def __init__(self, inplace=True):
+        super(h_sigmoid, self).__init__()
+        self.relu = nn.ReLU6(inplace=inplace)
+
+    def forward(self, x):
+        return self.relu(x + 3) / 6
+
+class h_swish(nn.Module):
+    def __init__(self, inplace=True):
+        super(h_swish, self).__init__()
+        self.sigmoid = h_sigmoid(inplace=inplace)
+
+    def forward(self, x):
+        return x * self.sigmoid(x)
+
+
+class CoordAtt(nn.Module):
+    def __init__(self, inp, oup, reduction=1):
+        super(CoordAtt, self).__init__()
+        self.pool_h = nn.AdaptiveAvgPool2d((None, 1))
+        self.pool_w = nn.AdaptiveAvgPool2d((1, None))
+
+        mip = max(8, inp // reduction)
+
+        self.conv1 = nn.Conv2d(inp, mip, kernel_size=1, stride=1, padding=0)
+        self.bn1 = nn.BatchNorm2d(mip)
+        self.act = h_swish()
+        
+        self.conv_h = nn.Conv2d(mip, oup, kernel_size=1, stride=1, padding=0)
+        self.conv_w = nn.Conv2d(mip, oup, kernel_size=1, stride=1, padding=0)
+        
+    def forward(self, x):
+        identity = x
+        
+        n,c,h,w = x.size()
+        x_h = self.pool_h(x)
+        x_w = self.pool_w(x).permute(0, 1, 3, 2)
+
+        y = torch.cat([x_h, x_w], dim=2)
+        y = self.conv1(y)
+        y = self.bn1(y)
+        y = self.act(y) 
+        
+        x_h, x_w = torch.split(y, [h, w], dim=2)
+        x_w = x_w.permute(0, 1, 3, 2)
+
+        a_h = self.conv_h(x_h).sigmoid()
+        a_w = self.conv_w(x_w).sigmoid()
+
+        out = identity * a_w * a_h
+
+        return out
+    
+
+class MCG(nn.Module):
+    def __init__(self, rgb_inchannels, depth_inchannels):
+        super(MCG, self).__init__()
+        self.channels = rgb_inchannels
+        self.convDtoR = nn.Conv2d(depth_inchannels, rgb_inchannels, 3,1,1)
+        self.convTo2 = nn.Conv2d(rgb_inchannels*2, 2, 3, 1, 1)
+        self.sig = nn.Sigmoid()
+        self.global_avg_pool = nn.AdaptiveAvgPool2d(1)
+        self.global_max_pool = nn.AdaptiveMaxPool2d(1)
+        self.relu = nn.ReLU()
+        self.coordAttention = CoordAtt(rgb_inchannels, rgb_inchannels)
+
+    def forward(self,r,d):
+        d = self.convDtoR(d)
+        d = self.relu(d)
+        H = torch.cat((r,d), dim=1)
+        H_conv = self.convTo2(H)
+        H_conv = self.sig(H_conv)
+        g = self.global_avg_pool(H_conv)
+
+        ga = g[:, 0:1, :, :]
+        gm = g[:, 1:, :, :]
+
+        Ga = r * ga
+        Gm = d * gm
+
+        Gm_out = self.coordAttention(Gm)
+        out = Gm_out + Ga
+        return out
+
+class Branch(nn.Module):
+    def __init__(self, channels=64):
+        super(Branch, self).__init__()
+        self.shared_encoder = caformer_m36_384_in21ft1k()
+
+        self.GCM3 = GCM3([96, 192, 384, 576], channels)
 
         self.LL_down3 = nn.Sequential(
             BasicConv2d(channels, channels, stride=2, kernel_size=3, padding=1)
@@ -27,11 +148,7 @@ class PANetDS(nn.Module):
         self.one_conv_f1_hh = ETM(channels * 2, channels)
         self.one_conv_f2_hh = ETM(channels * 2, channels)
 
-        self.GPM = GPM(1536)
-        self.decoder = UNetDecoderWithEdges(channels, channels)
-        
-    def forward(self, data):
-        x = data['image']
+    def forward(self, x):
         en_feats = self.shared_encoder(x)
         x1, x2, x3, x4 = en_feats
         LL, LH, HL, HH, f1, f2, f3, f4 = self.GCM3(x1, x2, x3, x4)
@@ -51,14 +168,7 @@ class PANetDS(nn.Module):
         f4_LL = torch.cat([LL_down4, f4], dim=1)
         f4_LL = self.one_conv_f4_ll(f4_LL)
 
-        prior_cam = self.GPM(x4)
-        pred_0 = F.interpolate(prior_cam, size=x.size()[2:], mode='bilinear', align_corners=False)
-        f4, f3, f2, f1, bound_f4, bound_f3, bound_f2, bound_f1 = self.decoder(
-            [f1_HH, f2_HH, f3_LL, f4_LL], prior_cam,
-            x)
-        pred = [f1]
-        res = {'res': pred}
-        return res
+        return f1_HH, f2_HH, f3_LL, f4_LL, x4
 
 
 class BasicConv2d(nn.Module):
@@ -256,15 +366,35 @@ class GCM3(nn.Module):
         f3 = self.T3(f3)
         f4 = self.T4(f4)
         camo = self.decoder(torch.cat(
-            [f1, F.upsample(f2, size=f1.shape[2:], mode='bilinear', align_corners=True),
-             F.upsample(f3, size=f1.shape[2:], mode='bilinear', align_corners=True),
-             F.upsample(f4, size=f1.shape[2:], mode='bilinear', align_corners=True)], 1))
+            [f1, F.upsample(f2, scale_factor=2, mode='bilinear', align_corners=True),
+             F.upsample(f3, scale_factor=4, mode='bilinear', align_corners=True),
+             F.upsample(f4, scale_factor=8, mode='bilinear', align_corners=True)], 1))
         LL, LH, HL, HH = self.DWT(camo)
         return LL, LH, HL, HH, f1, f2, f3, f4
 
 
+class SDI(nn.Module):
+    def __init__(self, channel):
+        super().__init__()
+
+        self.convs = nn.ModuleList(
+            [nn.Conv2d(channel, channel, kernel_size=3, stride=1, padding=1)] * 4)
+
+    def forward(self, xs, anchor):
+        ans = torch.ones_like(anchor)
+        target_size = anchor.shape[-1]
+        for i, x in enumerate(xs):
+            if x.shape[-1] > target_size:
+                x = F.adaptive_avg_pool2d(x, (target_size, target_size))
+            elif x.shape[-1] < target_size:
+                x = F.interpolate(x, size=(target_size, target_size),
+                                  mode='bilinear', align_corners=True)
+            ans = ans * self.convs[i](x)
+        return ans
+
+
 class GPM(nn.Module):
-    def __init__(self, in_c=128, dilation_series=[6, 12, 18], padding_series=[6, 12, 18], depth=128):
+    def __init__(self, in_c=128, dilation_series=[6, 12, 18], padding_series=[6, 12, 18], depth=32):
         super(GPM, self).__init__()
         self.branch_main = nn.Sequential(
             nn.AdaptiveAvgPool2d((1, 1)),
@@ -307,10 +437,3 @@ class GPM(nn.Module):
         out = self.head(out)
         out = self.out(out)
         return out
-
-
-if __name__ == '__main__':
-    net = PANet(channels=64).eval()
-    x = torch.rand(1, 3, 384, 384)
-    y = torch.rand(1, 3, 384, 384)
-    out = net({'image': x, 'box_image': y})

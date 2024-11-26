@@ -1,7 +1,7 @@
 import torch.nn as nn
 import torch
 import torch.nn.functional as F
-from .pvtv2 import pvt_v2_b4
+from .pvtv2 import pvt_v2_b4, pvt_v2_b3
 from .losses import UALoss, NCLoss, DiceLoss
 from timm import create_model
 

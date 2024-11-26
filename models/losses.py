@@ -129,6 +129,7 @@ class StructureLoss(nn.Module):
 class NLSSLoss(nn.Module):
     def __init__(self):
         super(NLSSLoss, self).__init__()
+        self.announce = True
         
     def warmup_loss(self, preds, targets):
         weit = 1 + 5 * torch.abs(F.avg_pool2d(targets, kernel_size=31, stride=1, padding=15) - targets)
@@ -141,8 +142,8 @@ class NLSSLoss(nn.Module):
         wiou = 1 - (inter + 1) / (union - inter + 1)
         return (wbce + wiou).mean()
 
-    def denoise_loss(self, preds, targets, q):
-        preds = F.sigmoid(preds)
+    def denoise_loss(self, preds, targets, q=1):
+        preds = torch.sigmoid(preds)
         preds_flat = preds.contiguous().view(preds.shape[0], -1)
         targets_flat = targets.contiguous().view(targets.shape[0], -1)
         numerator = torch.sum(torch.abs(preds_flat - targets_flat) ** q, dim=1)
@@ -155,7 +156,10 @@ class NLSSLoss(nn.Module):
         if q == 2:
             return self.warmup_loss(preds, targets)
         if q == 1:
-            return self.denoise_loss(preds, targets) * 2
+            if self.announce:
+                 print("now the q is 1!")
+            self.announce = False
+            return self.denoise_loss(preds, targets, q) * 2
         
 
 class NCLoss(nn.Module):

@@ -61,7 +61,7 @@ def build_dataloader(opt, dataset_key, world_size=None, rank=None):
             batch_size=dataset_config['batch_size'], 
             num_workers=dataset_config['num_workers'], 
             sampler=sampler,
-            drop_last=False
+            drop_last=True
         )
         return dataloader, sampler
     else:
@@ -130,7 +130,7 @@ def loss_computation(logits_list, data, losses, opt):
                 target = data['edge']
             if loss_fn.__class__.__name__ == 'UALoss':
                 loss = coef * loss_fn(logits, target, iter_percentage)
-            elif loss_fn.__class__.__name__ == 'NCLoss':
+            elif loss_fn.__class__.__name__ == 'NCLoss' or loss_fn.__class__.__name__ == 'NLSSLoss':
                 q = 1 if data['tmp_epoch'] > opt['training']['q_epoch'] else 2
                 loss = coef * loss_fn(logits, target, q)
             elif loss_fn.__class__.__name__ == 'L1Loss' or loss_fn.__class__.__name__ == 'POTLoss':
@@ -148,6 +148,7 @@ def train(rank, world_size, opt, loss_records):
 
     model = build_model(opt)
     model.to(device)
+    model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
     model = DDP(model, device_ids=[rank], find_unused_parameters=opt['training']['find_unused_parameters'])
 
     optimizer = build_optimizer(opt, model)
@@ -160,7 +161,6 @@ def train(rank, world_size, opt, loss_records):
         keys = [key for key in opt['dataset'] if 'train' in key]
     dataloaders = {key: build_dataloader(opt, key, world_size, rank) for key in keys}
     train_loaders = {key: dataloaders[key][0] for key in dataloaders.keys() if 'train' in key}
-    print(len(train_loaders))
     samplers = {key: dataloaders[key][1] for key in dataloaders.keys() if 'train' in key}
     val_loader = dataloaders['val'][0] if is_validation else None
     val_metrics = {metric_name: get_metric(metric_name) for metric_name in opt['dataset']['val']['metric']} if is_validation else None
@@ -243,20 +243,17 @@ def train(rank, world_size, opt, loss_records):
             data['tmp_iter'] = i
             data['tmp_epoch'] = epoch
 
-            # with autocast():
-            logits_list = model(data)['res']
-            loss_list = loss_computation(logits_list, data, losses, opt)
-            loss = sum(loss_list)
-            # with torch.autograd.set_detect_anomaly(True):
-            #     loss.backward()
-            # optimizer.step()
+            with autocast():
+                logits_list = model(data)['res']
+                loss_list = loss_computation(logits_list, data, losses, opt)
+                loss = sum(loss_list)
             scaler.scale(loss).backward()
             scaler.step(optimizer)
             scaler.update()
             
             step += 1
             epoch_step += 1
-            finished_iters = epoch_step + epoch * total_step
+            finished_iters = epoch_step + (epoch - 1) * total_step
             loss_all += loss.item()
 
             if rank == 0 and (i % 20 == 0 or i == total_step or i == 1):
@@ -296,7 +293,7 @@ def train(rank, world_size, opt, loss_records):
                 writer.add_image('RGB2', grid_image, step)
             data_end_time = datetime.now()
         scheduler.step()
-
+        torch.cuda.empty_cache()
         loss_all /= epoch_step
         if rank == 0:
             logging.info(f'[Train Info]: Epoch [{epoch:03d}/{opt["training"]["epochs"]:03d}], Loss_AVG: {loss_all:.4f}')

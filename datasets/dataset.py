@@ -478,7 +478,7 @@ class COSwithBox(data.Dataset):
             transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
         ])
         self.bbox_resize_aug = A.Compose([
-            A.Affine(scale=(0.8, 1.2)),  # Resize bounding box with scaling between 0.8x to 1.2x
+            A.Affine(scale=(0.9, 1.1)),  # Resize bounding box with scaling between 0.8x to 1.2x
         ], additional_targets={'bbox_image': 'mask'})
 
         self.gt_transform = transforms.Compose([

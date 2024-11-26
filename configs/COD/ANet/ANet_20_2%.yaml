@@ -10,8 +10,8 @@ dataset:
     file_list: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/COD/coreset/coreset20.txt'
     trainsize: 384
     istraining: true
-    batch_size: 24
-    num_workers: 4
+    batch_size: 12
+    num_workers: 2
     shuffle: true
   val:
     type: 'COSwithBox'
@@ -21,7 +21,7 @@ dataset:
     trainsize: 384
     istraining: false
     batch_size: 24
-    num_workers: 6
+    num_workers: 2
     shuffle: false
     metric: ['MAE', 'IoU']
     pose_process: ['tensor_pose_processing_mask']
@@ -56,7 +56,7 @@ scheduler:
     total_epochs: 200
 
 model:
-  name: 'ANet'
+  name: 'ANet_CAFormer'
   params:
     channels: 64
 
@@ -64,14 +64,14 @@ training:
   epochs: 200
   load: null
   pretrain: null
-  gpu_id: '0'
+  gpu_id: '3'
   best_mae: 1.0
   best_epoch: 1
   val_step: 50
   MASTER_ADDR: 'localhost'
-  MASTER_PORT: '12350'
-  save_path: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/COD/PANet/20%/'
-  find_unused_parameters: false
+  MASTER_PORT: '12351'
+  save_path: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/COD/ANet/20_2%/'
+  find_unused_parameters: true
   main_output_index: 4
   losses:
       loss1:

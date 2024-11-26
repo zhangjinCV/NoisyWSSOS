@@ -60,8 +60,8 @@ scheduler:
   params:
     max_lr: 0.0001
     min_lr: 0.0000001
-    warmup_epochs: 5
-    total_epochs: 100
+    warmup_epochs: 0
+    total_epochs: 200
 
 model:
   name: 'PNet'
@@ -69,11 +69,11 @@ model:
     channels: 64
 
 training:
-  epochs: 100
+  epochs: 200
   load: null
-  q_epoch: 60
+  q_epoch: 100
   pretrain: null
-  gpu_id: '1'
+  gpu_id: '0'
   best_mae: 1.0
   best_epoch: 1
   val_step: 1
@@ -84,23 +84,23 @@ training:
   main_output_index: 4
   losses:
     loss1:
-      type: ['StructureLoss']
+      type: ['NLSSLoss']
       gt_input: ["gt"]
       coef: [0.0625]
     loss2:
-      type: ['StructureLoss']
+      type: ['NLSSLoss']
       gt_input: ["gt"]
       coef: [0.125]
     loss3:
-      type: ['StructureLoss']
+      type: ['NLSSLoss']
       gt_input: ["gt"]
       coef: [0.25]
     loss4:
-      type: ['StructureLoss']
+      type: ['NLSSLoss']
       gt_input: ["gt"]
       coef: [0.5]
     loss5:
-      type: ['StructureLoss', 'UALoss']
+      type: ['NLSSLoss', 'UALoss']
       gt_input: ["gt", "gt"]
       coef: [1, 2]
     loss6:
