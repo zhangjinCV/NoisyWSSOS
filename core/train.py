@@ -29,9 +29,14 @@ from torch.cuda.amp import autocast, GradScaler
 from models.losses import *
 import json 
 
+
+
 def build_model(opt):
-    params = opt['model']['params']
-    model = globals()[opt['model']['name']](**params)
+    if 'params' in opt['model']:
+        params = opt['model']['params']
+        model = globals()[opt['model']['name']](**params)
+    else:
+        model = globals()[opt['model']['name']]()
     return model
 
 def build_optimizer(opt, model):
@@ -288,9 +293,10 @@ def train(rank, world_size, opt, loss_records):
                 if 'bbox_image' in data:
                     grid_image = make_grid(denormalize(data['bbox_image'][0].clone().cpu().data), 1, normalize=True)
                     writer.add_image('BBox', grid_image, step)
-
-                grid_image = make_grid(denormalize(data['image'][1].clone().cpu().sigmoid().data), 1, normalize=True)
-                writer.add_image('RGB2', grid_image, step)
+                
+                if 'edge' in data:
+                    grid_image = make_grid(data['edge'][0].clone().cpu().data, 1, normalize=True)
+                    writer.add_image('edge', grid_image, step)
             data_end_time = datetime.now()
         scheduler.step()
         torch.cuda.empty_cache()

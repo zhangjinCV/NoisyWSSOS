@@ -1,0 +1,2 @@
+/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/results/COD/PNet/1%/CHAMELEON_TestingDataset
+&  0.047  &  0.628  &  0.742  &  0.808

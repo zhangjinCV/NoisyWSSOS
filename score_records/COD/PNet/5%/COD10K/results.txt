@@ -1,0 +1,2 @@
+/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/results/COD/PNet/5%/COD10K
+&  0.025  &  0.651  &  0.787  &  0.856

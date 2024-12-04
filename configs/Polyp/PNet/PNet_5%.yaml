@@ -1,0 +1,91 @@
+seed: 2024
+save_iter: 5
+max_save_num: 3
+
+dataset:
+  train1:
+    type: 'COSwithNoBox'
+    image_root: '/mnt/jixie16t/dataset/Polyp/TrainDataset/image/'
+    gt_root: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/results/Polyp/ANet/coreset/remaining95/mask/'
+    file_list: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/Polyp/coreset/remaining95.txt'
+    trainsize: 384
+    istraining: true
+    batch_size: 24
+    num_workers: 8
+    shuffle: true
+  train2:
+    type: 'COSwithNoBox'
+    image_root: '/mnt/jixie16t/dataset/Polyp/TrainDataset/image/'
+    gt_root: '/mnt/jixie16t/dataset/Polyp/TrainDataset/mask/'
+    file_list: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/Polyp/coreset/coreset5.txt'
+    repeat: 16
+    trainsize: 384
+    istraining: true
+    batch_size: 6
+    num_workers: 2
+    shuffle: true
+  val:
+    type: 'COSwithNoBox'
+    image_root: '/mnt/jixie16t/dataset/Polyp/TestDataset/CVC-ClinicDB/image/'
+    gt_root: '/mnt/jixie16t/dataset/Polyp/TestDataset/CVC-ClinicDB/mask/'
+    file_list: '/mnt/jixie16t/dataset/Polyp/TestDataset/CVC-ClinicDB/namelist.txt'
+    trainsize: 384
+    istraining: false
+    batch_size: 12
+    num_workers: 2
+    shuffle: false
+    pose_process: ['tensor_pose_processing_mask']
+    metric: ['MAE', 'IoU']
+  test:
+    type: 'COSwithNoBox'
+    image_root: ['/mnt/jixie16t/dataset/Polyp/TestDataset/CVC-300/image/', '/mnt/jixie16t/dataset/Polyp/TestDataset/CVC-ClinicDB/image/', '/mnt/jixie16t/dataset/Polyp/TestDataset/CVC-ColonDB/image/', '/mnt/jixie16t/dataset/Polyp/TestDataset/ETIS-LaribPolypDB/image/', '/mnt/jixie16t/dataset/Polyp/TestDataset/Kvasir/image/']
+    gt_root: ['/mnt/jixie16t/dataset/Polyp/TestDataset/CVC-300/mask/', '/mnt/jixie16t/dataset/Polyp/TestDataset/CVC-ClinicDB/mask/', '/mnt/jixie16t/dataset/Polyp/TestDataset/CVC-ColonDB/mask/', '/mnt/jixie16t/dataset/Polyp/TestDataset/ETIS-LaribPolypDB/mask/', '/mnt/jixie16t/dataset/Polyp/TestDataset/Kvasir/mask/']
+    file_list: ['/mnt/jixie16t/dataset/Polyp/TestDataset/CVC-300/namelist.txt', '/mnt/jixie16t/dataset/Polyp/TestDataset/CVC-ClinicDB/namelist.txt', '/mnt/jixie16t/dataset/Polyp/TestDataset/CVC-ColonDB/namelist.txt', '/mnt/jixie16t/dataset/Polyp/TestDataset/ETIS-LaribPolypDB/namelist.txt', '/mnt/jixie16t/dataset/Polyp/TestDataset/Kvasir/namelist.txt']
+    trainsize: 384
+    istraining: false
+    batch_size: 12
+    num_workers: 2
+    shuffle: false
+    save_path: ['/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/results/Polyp/PNet/5%/CVC-300', '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/results/Polyp/PNet/5%/CVC-ClinicDB', '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/results/Polyp/PNet/5%/CVC-ColonDB', '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/results/Polyp/PNet/5%/ETIS-LaribPolypDB', '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/results/Polyp/PNet/5%/Kvasir']
+    load: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/Polyp/PNet/5%/epoch_100.pth'
+    save_indices: [0]
+    save_index_names: ['']
+    pose_process: ['tensor_pose_processing_mask']
+
+optimizer:
+  type: 'AdamW'
+  params:
+    lr: 0.0004
+
+scheduler:
+  type: 'LinearCosineAnnealingLR'
+  params:
+    max_lr: 0.0001
+    min_lr: 0.0000001
+    warmup_epochs: 0
+    total_epochs: 100
+
+model:
+  name: 'PolypPVT'
+  params:
+    channels: 64
+
+training:
+  epochs: 100
+  load: null
+  q_epoch: 40
+  pretrain: null
+  gpu_id: '3'
+  best_mae: 1.0
+  best_epoch: 1
+  val_step: 10
+  MASTER_ADDR: 'localhost'
+  MASTER_PORT: '12353'
+  save_path: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/Polyp/PNet/5%/'
+  find_unused_parameters: true
+  main_output_index: 0
+  losses:
+    loss1:
+      type: ['NLSSLoss']
+      gt_input: ["gt"]
+      coef: [1]

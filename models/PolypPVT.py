@@ -156,28 +156,28 @@ class SpatialAttention(nn.Module):
 
 
 class PolypPVT(nn.Module):
-    def __init__(self, channel=32):
+    def __init__(self, channels=32):
         super(PolypPVT, self).__init__()
 
         self.backbone = pvt_v2_b2()
 
-        self.Translayer2_0 = BasicConv2d(64, channel, 1)
-        self.Translayer2_1 = BasicConv2d(128, channel, 1)
-        self.Translayer3_1 = BasicConv2d(320, channel, 1)
-        self.Translayer4_1 = BasicConv2d(512, channel, 1)
+        self.Translayer2_0 = BasicConv2d(64, channels, 1)
+        self.Translayer2_1 = BasicConv2d(128, channels, 1)
+        self.Translayer3_1 = BasicConv2d(320, channels, 1)
+        self.Translayer4_1 = BasicConv2d(512, channels, 1)
 
-        self.CFM = CFM(channel)
+        self.CFM = CFM(channels)
         self.ca = ChannelAttention(64)
         self.sa = SpatialAttention()
-        self.SAM = SAM()
+        self.SAM = SAM(channels)
         
         self.down05 = nn.Upsample(scale_factor=0.5, mode='bilinear', align_corners=True)
-        self.out_SAM = nn.Conv2d(channel, 1, 1)
-        self.out_CFM = nn.Conv2d(channel, 1, 1)
+        self.out_SAM = nn.Conv2d(channels, 1, 1)
+        self.out_CFM = nn.Conv2d(channels, 1, 1)
 
 
-    def forward(self, x):
-
+    def forward(self, data):
+        x = data['image']
         # backbone
         pvt = self.backbone(x)
         x1 = pvt[0]
@@ -206,7 +206,8 @@ class PolypPVT(nn.Module):
 
         prediction1_8 = F.interpolate(prediction1, scale_factor=8, mode='bilinear') 
         prediction2_8 = F.interpolate(prediction2, scale_factor=8, mode='bilinear')  
-        return prediction1_8, prediction2_8
+        res = {'res':[prediction1_8 + prediction2_8]}
+        return res
 
 
 if __name__ == '__main__':

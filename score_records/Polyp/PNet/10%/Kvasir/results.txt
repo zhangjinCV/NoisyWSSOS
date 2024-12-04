@@ -1,0 +1,2 @@
+/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/results/Polyp/PNet/10%/Kvasir
+&  0.024  &  0.851  &  0.923  &  0.926

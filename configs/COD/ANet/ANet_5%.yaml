@@ -10,7 +10,7 @@ dataset:
     file_list: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/COD/coreset/coreset5.txt'
     trainsize: 384
     istraining: true
-    batch_size: 12
+    batch_size: 16
     num_workers: 2
     shuffle: true
   val:
@@ -63,13 +63,13 @@ model:
 training:
   epochs: 100
   load: null
-  pretrain: null
-  gpu_id: '0'
+  pretrain: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/PANet/LVIS/epoch_20.pth'
+  gpu_id: '2'
   best_mae: 1.0
   best_epoch: 1
-  val_step: 10
+  val_step: 50
   MASTER_ADDR: 'localhost'
-  MASTER_PORT: '12356'
+  MASTER_PORT: '12351'
   save_path: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/COD/ANet/5%/'
   find_unused_parameters: false
   main_output_index: 4

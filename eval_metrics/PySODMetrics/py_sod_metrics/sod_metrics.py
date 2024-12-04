@@ -545,3 +545,67 @@ class WeightedFmeasure(object):
         """
         weighted_fm = np.mean(np.array(self.weighted_fms, dtype=TYPE))
         return dict(wfm=weighted_fm)
+
+
+
+class IoU(object):
+    def __init__(self):
+        """
+        IoU (Intersection over Union) for binary segmentation.
+
+        @inproceedings{IoU,
+            title={A comprehensive review on IoU and related metrics for segmentation evaluation},
+            author={Zhou, Zhen and et al.},
+            booktitle={CVPR},
+            pages={300--310},
+            year={2020}
+        """
+        self.ious = []
+
+    def step(self, pred: np.ndarray, gt: np.ndarray):
+        """
+        Calculate the IoU score for the given prediction and ground truth.
+        
+        :param pred: Predicted binary mask (numpy.ndarray)
+        :param gt: Ground truth binary mask (numpy.ndarray)
+        """
+        pred, gt = self.prepare_data(pred, gt)
+        iou = self.cal_iou(pred, gt)
+        self.ious.append(iou)
+
+    def prepare_data(self, pred: np.ndarray, gt: np.ndarray) -> tuple:
+        """
+        Prepare the data by ensuring both prediction and ground truth are binary.
+
+        :param pred: Predicted binary mask (numpy.ndarray)
+        :param gt: Ground truth binary mask (numpy.ndarray)
+        :return: Tuple of prepared prediction and ground truth
+        """
+        # Ensure that pred and gt are binary
+        pred = np.asarray(pred, dtype=bool)
+        gt = np.asarray(gt, dtype=bool)
+        return pred, gt
+
+    def cal_iou(self, pred: np.ndarray, gt: np.ndarray) -> float:
+        """
+        Calculate the Intersection over Union (IoU) score.
+
+        IoU = intersection / union
+
+        :param pred: Predicted binary mask (numpy.ndarray)
+        :param gt: Ground truth binary mask (numpy.ndarray)
+        :return: IoU score (float)
+        """
+        intersection = np.sum(pred * gt)
+        union = np.sum(pred + gt)
+        iou = intersection / (union + 1e-6)  # Add small epsilon to avoid division by zero
+        return iou
+
+    def get_results(self) -> dict:
+        """
+        Return the average IoU score.
+
+        :return: Dictionary with the average IoU
+        """
+        mean_iou = np.mean(np.array(self.ious, dtype=np.float64))
+        return dict(iou=mean_iou)

@@ -10,17 +10,17 @@ dataset:
     file_list: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/Polyp/coreset/coreset10.txt'
     trainsize: 384
     istraining: true
-    batch_size: 12
-    num_workers: 4
+    batch_size: 16
+    num_workers: 2
     shuffle: true
   val:
-    type: 'COSwithBox'
+    type: 'COSwithBoxVal'
     image_root: '/mnt/jixie16t/dataset/Polyp/TrainDataset/image/'
     gt_root: '/mnt/jixie16t/dataset/Polyp/TrainDataset/mask/'
     file_list: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/Polyp/coreset/remaining90.txt'
     trainsize: 384
     istraining: false
-    batch_size: 64
+    batch_size: 1
     num_workers: 4
     shuffle: false
     metric: ['MAE', 'IoU']
@@ -63,14 +63,14 @@ model:
 training:
   epochs: 100
   load: null
-  pretrain: null
-  gpu_id: '1'
+  pretrain: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/PANet/LVIS/epoch_20.pth'
+  gpu_id: '3'
   best_mae: 1.0
   best_epoch: 1
   val_step: 50
   is_validation: true
   MASTER_ADDR: 'localhost'
-  MASTER_PORT: '12362'
+  MASTER_PORT: '12361'
   save_path: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/Polyp/ANet/10%/'
   find_unused_parameters: false
   main_output_index: 4

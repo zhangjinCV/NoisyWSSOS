@@ -1,0 +1,2 @@
+/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/results/Polyp/PNet/10%/CVC-ColonDB
+&  0.032  &  0.703  &  0.796  &  0.866

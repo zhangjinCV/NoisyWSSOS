@@ -1,0 +1,2 @@
+/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/results/COD/ANet/coreset/remaining99/mask
+&  0.026  &  0.648  &  0.820  &  0.870

@@ -6,19 +6,21 @@ dataset:
   train1:
     type: 'COSwithBox'
     image_root: '/mnt/jixie16t/dataset/LVIS/image/'
-    gt_root: '/mnt/jixie16t/dataset/LVIS/mask/'
+    gt_root: '/mnt/jixie16t/dataset/LVIS/mask_coconut/'
+    box_root: '/mnt/jixie16t/dataset/LVIS/box_coconut/'
+    edge_root: '/mnt/jixie16t/dataset/LVIS/edge_coconut'
     file_list: '/mnt/jixie16t/dataset/LVIS/namelist.txt'
-    trainsize: 320
+    trainsize: 288
     istraining: true
-    batch_size: 32
-    num_workers: 2
+    batch_size: 36
+    num_workers: 8
     shuffle: true
   val:
     type: 'COSwithBox'
     image_root: '/mnt/jixie16t/dataset/COD/CAMO_COD_train/image/'
     gt_root: '/mnt/jixie16t/dataset/COD/CAMO_COD_train/mask/'
     file_list: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/COD/coreset/remaining80.txt'
-    trainsize: 320
+    trainsize: 288
     istraining: false
     batch_size: 32
     num_workers: 4
@@ -61,16 +63,16 @@ model:
     channels: 64
 
 training:
-  epochs: 200
+  epochs: 100
   load: null
   pretrain: null
-  gpu_id: '0,1,2,3'
+  gpu_id: '0'
   best_mae: 1.0
   best_epoch: 1
-  val_step: 5
+  val_step: 1
   MASTER_ADDR: 'localhost'
-  MASTER_PORT: '12350'
-  save_path: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/PANet/LVIS/'
+  MASTER_PORT: '12351'
+  save_path: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/PANet/COCONut/'
   find_unused_parameters: false
   main_output_index: 4
   losses:

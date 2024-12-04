@@ -1,0 +1,2 @@
+/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/results/Polyp/PNet/1%/CVC-300
+&  0.018  &  0.376  &  0.680  &  0.811

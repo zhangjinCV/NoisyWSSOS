@@ -1,0 +1,2 @@
+/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/results/Polyp/PNet/100%/CVC-ClinicDB
+&  0.008  &  0.789  &  0.916  &  0.948

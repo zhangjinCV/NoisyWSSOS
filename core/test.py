@@ -19,8 +19,11 @@ from torch.cuda.amp import autocast
 from datasets.dataset import get_dataset
 
 def build_model(opt):
-    params = opt['model']['params']
-    model = globals()[opt['model']['name']](**params)
+    if 'params' in opt['model']:
+        params = opt['model']['params']
+        model = globals()[opt['model']['name']](**params)
+    else:
+        model = globals()[opt['model']['name']]()
     return model
 
 def build_dataloader(opt, dataset_key):
@@ -47,7 +50,6 @@ def load_pretrained_weight(model, opt):
     return model
 
 def val(opt):
-    seed_torch(opt['seed'])
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     model = build_model(opt)

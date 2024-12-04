@@ -8,10 +8,11 @@ dataset:
     image_root: '/mnt/jixie16t/dataset/DIS5K/DIS-TR/im/'
     gt_root: '/mnt/jixie16t/dataset/DIS5K/DIS-TR/gt/'
     box_root: '/mnt/jixie16t/dataset/DIS5K/DIS-TR/box/'
+    edge_root: '/mnt/jixie16t/dataset/DIS5K/DIS-TR/edge/'
     file_list: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/DIS5K/coreset/coreset1.txt'
     trainsize: 1024
     istraining: true
-    batch_size: 2
+    batch_size: 1
     num_workers: 2
     shuffle: true
   val:
@@ -34,7 +35,7 @@ dataset:
     file_list: ['/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/DIS5K/coreset/remaining99.txt']
     trainsize: 1024
     istraining: false
-    batch_size: 8
+    batch_size: 16
     num_workers: 4
     shuffle: false
     save_path: ['/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/results/DIS5K/ANet/coreset/remaining99/']
@@ -65,11 +66,11 @@ model:
 training:
   epochs: 100
   load: null
-  pretrain: null
+  pretrain: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/PANet/LVIS/epoch_20.pth'
   gpu_id: '1'
   best_mae: 1.0
   best_epoch: 1
-  is_validation: false
+  is_validation: true
   val_step: 50
   MASTER_ADDR: 'localhost'
   MASTER_PORT: '12359'

@@ -1,0 +1,2 @@
+/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/results/COD/PNet/20%/CAMO
+&  0.047  &  0.746  &  0.852  &  0.866

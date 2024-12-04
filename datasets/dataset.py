@@ -38,7 +38,7 @@ def decode_segmentation(rle, height, width):
     })
 
 aug = A.Compose([
-    A.ColorJitter(0.5, 0.5, 0.5, 0.5),
+    # A.ColorJitter(0.5, 0.5, 0.5, 0.5),
     A.HorizontalFlip(p=0.5),
     A.VerticalFlip(p=0.5),
     A.Flip(p=0.5),
@@ -245,152 +245,18 @@ class LVISDataset(data.Dataset):
         return self.size
 
 
-class ImageInpainting(data.Dataset):
-    def __init__(self, image_root, gt_root, file_list, trainsize, istraining=True, repeat=1, **kwargs):
-        self.trainsize = trainsize
-        self.istraining = istraining
-        box_root = gt_root
-        self.images = [os.path.join(image_root, fname) for fname in read_filenames(file_list)] * repeat
-        self.boxes = [os.path.join(box_root, fname.replace('.jpg', '.png')) for fname in read_filenames(file_list)] * repeat
-
-        self.images = np.array(sorted(self.images))
-        self.boxes = np.array(sorted(self.boxes))
-    
-        self.img_transform = transforms.Compose([
-            transforms.Resize((self.trainsize, self.trainsize)),
-            transforms.ToTensor()
-        ])
-        self.box_transform = transforms.Compose([
-            transforms.Resize((self.trainsize, self.trainsize)),
-            transforms.ToTensor()
-        ])
-        self.size = len(self.images)
-
-    def __getitem__(self, index):
-        image = self.rgb_loader(self.images[index])
-        name = os.path.basename(self.images[index])
-        box = self.binary_loader(self.boxes[index])
-        H, W = image.size
-        if self.istraining:
-            image, box = np.array(image).astype(np.uint8), np.array(box).astype(np.uint8)
-            # augmented = aug2(image=image, mask=box)
-            # image, box = augmented['image'], augmented['mask']
-            box = np.where(box > 0.2 * 255, 255, 0).astype(np.uint8)
-            image, box = Image.fromarray(image),  Image.fromarray(box)
-        image = self.img_transform(image)
-        box = self.box_transform(box)
-        dest = image * box
-        return {'image': dest, 'gt': image, 'box': box, 'H': H, 'W': W, 'name': name}
-
-    def rgb_loader(self, path):
-        with open(path, 'rb') as f:
-            img = Image.open(f)
-            return img.convert('RGB')
-
-    def binary_loader(self, path):
-        with open(path, 'rb') as f:
-            img = Image.open(f)
-            return img.convert('L')
-
-    def __len__(self):
-        return self.size
-
-
-class ZoomNeXtDataset(data.Dataset):
-    def __init__(self, image_root, gt_root, file_list, trainsize, istraining=True, repeat=1, **kwargs):
-        self.trainsize = trainsize
-        self.istraining = istraining
-        self.gts = [os.path.join(gt_root, fname.replace('.jpg', '.png')) for fname in read_filenames(file_list)]
-        self.images = [os.path.join(image_root, fname) for fname in read_filenames(file_list)]
-        self.edges = [i.replace("mask", "edge") for i in self.gts]
-
-        self.check_pairs(self.images, self.gts, self.edges)
-        
-        if self.istraining:
-            self.images = np.array(sorted(self.images))
-            self.gts = np.array(sorted(self.gts))
-            self.edges = np.array(sorted(self.edges))
-        else:
-            self.images = np.array(sorted(self.images))
-            self.gts = np.array(sorted(self.gts))
-
-        self.img_transform = transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-        ])
-        self.gt_transform = transforms.Compose([
-            transforms.Resize((self.trainsize, self.trainsize)),
-            transforms.ToTensor()
-        ])
-        self.size = len(self.images)
-
-    def __getitem__(self, index):
-        image = self.rgb_loader(self.images[index])
-        name = os.path.basename(self.images[index])
-        gt = self.binary_loader(self.gts[index])
-        H, W = image.size
-        if self.istraining:
-            edge = self.binary_loader(self.edges[index])
-            image, gt, edge = np.array(image).astype(np.uint8), np.array(gt).astype(np.uint8), np.array(edge).astype(np.uint8)
-            augmented = aug(image=image, mask=gt, edge=edge)
-            image, gt, edge = augmented['image'], augmented['mask'], augmented['edge']
-            # image, gt, edge = Image.fromarray(image),  Image.fromarray(gt), Image.fromarray(edge)
-        image_s = self.img_transform(Image.fromarray(cv2.resize(copy.deepcopy(image), dsize=(224, 224))))
-        image_m = self.img_transform(Image.fromarray(cv2.resize(copy.deepcopy(image), dsize=(352, 352))))
-        image_l = self.img_transform(Image.fromarray(cv2.resize(copy.deepcopy(image), dsize=(512, 512))))
-        gt = Image.fromarray(gt)
-        gt = self.gt_transform(gt)
-        if self.istraining:
-            edge = Image.fromarray(edge)
-            edge = self.gt_transform(edge)
-            return {'image': image_m, 'image_s':image_s, 'image_l':image_l, 'gt': gt, 'edge': edge, 'H': H, 'W': W, 'name': name}
-        else:
-            return {'image': image, 'gt': gt, 'H': H, 'W': W, 'name': name}
-
-    def rgb_loader(self, path):
-        with open(path, 'rb') as f:
-            img = Image.open(f)
-            return img.convert('RGB')
-
-    def binary_loader(self, path):
-        with open(path, 'rb') as f:
-            img = Image.open(f)
-            return img.convert('L')
-    
-    def check_pairs(self, images, gts, edges):
-        print("checking dataset pairs")
-        if self.istraining:
-            for img, gt, edge in tqdm.tqdm(zip(images, gts, edges)):
-                assert os.path.exists(img), f"Image file {img} does not exist"
-                assert os.path.exists(gt), f"GT file {gt} does not exist"
-                assert os.path.exists(edge), f"Edge file {edge} does not exist"
-        else:
-            for img, gt in tqdm.tqdm(zip(images, gts)):
-                assert os.path.exists(img), f"Image file {img} does not exist"
-                assert os.path.exists(gt), f"GT file {gt} does not exist"
-        print("check dataset pass!")
-    def __len__(self):
-        return self.size
-    
 
 class COSwithNoBox(data.Dataset):
     def __init__(self, image_root, gt_root, file_list, trainsize, istraining=True, repeat=1, **kwargs):
         self.trainsize = trainsize
         self.istraining = istraining
-        self.gts = [os.path.join(gt_root, fname.replace('.jpg', '.png')) for fname in read_filenames(file_list)]
-        self.images = [os.path.join(image_root, fname) for fname in read_filenames(file_list)]
-        self.edges = [i.replace("mask", "edge") for i in self.gts]
-
-        self.check_pairs(self.images, self.gts, self.edges)
-        
-        if self.istraining:
-            self.images = np.array(sorted(self.images))
-            self.gts = np.array(sorted(self.gts))
-            self.edges = np.array(sorted(self.edges))
+        if 'edge_root' in kwargs:
+            edge_root = kwargs['edge_root']
         else:
-            self.images = np.array(sorted(self.images))
-            self.gts = np.array(sorted(self.gts))
-
+            print("you have not set the edge_root in yaml file, so we would not use the edge, instand of the mask path")
+            edge_root = gt_root
+        self.images, self.gts, self.edges = self.handle_read_path(image_root, gt_root, edge_root, file_list, repeat)
+        print("len(self.images):", len(self.images), "len(self.gts):", len(self.gts), "len(self.edges):", len(self.edges))
         self.img_transform = transforms.Compose([
             transforms.Resize((self.trainsize, self.trainsize)),
             transforms.ToTensor(),
@@ -421,6 +287,26 @@ class COSwithNoBox(data.Dataset):
         else:
             return {'image': image, 'gt': gt, 'H': H, 'W': W, 'name': name}
 
+    def handle_read_path(self, image_roots, gt_roots, edge_roots, file_lists, repeats, **kwargs):
+        if isinstance(image_roots, str):
+            self.images = [os.path.join(image_roots, fname) for fname in read_filenames(file_lists)] * repeats
+            self.gts = [os.path.join(gt_roots, fname.replace('.jpg', '.png')) for fname in read_filenames(file_lists)] * repeats
+            self.edges = [os.path.join(edge_roots, fname.replace('.jpg', '.png')) for fname in read_filenames(file_lists)] * repeats
+        else:
+            assert isinstance(image_roots, list)
+            self.images = []
+            self.gts = []
+            self.edges = []
+            for image_root, gt_root, edge_root, file_list, repeat in zip(image_roots, gt_roots, edge_roots, file_lists, repeats):
+                self.images += [os.path.join(image_root, fname) for fname in read_filenames(file_list)] * repeat
+                self.gts += [os.path.join(gt_root, fname.replace('.jpg', '.png')) for fname in read_filenames(file_list)] * repeat 
+                self.edges += [os.path.join(edge_root, fname.replace('.jpg', '.png')) for fname in read_filenames(file_list)] * repeat 
+                print(image_root, gt_root, edge_root, file_list, repeat)
+                print(len(self.images), len(self.gts))
+            
+        return np.array(self.images), np.array(self.gts), np.array(self.edges)
+
+
     def rgb_loader(self, path):
         with open(path, 'rb') as f:
             img = Image.open(f)
@@ -443,6 +329,7 @@ class COSwithNoBox(data.Dataset):
                 assert os.path.exists(img), f"Image file {img} does not exist"
                 assert os.path.exists(gt), f"GT file {gt} does not exist"
         print("check dataset pass!")
+
     def __len__(self):
         return self.size
 
@@ -458,15 +345,14 @@ class COSwithBox(data.Dataset):
             self.bbox_gts = [os.path.join(box_root, fname.replace('.jpg', '.png')) for fname in read_filenames(file_list)]
         else:
             self.bbox_gts = [i.replace("mask", "box") for i in self.gts]
-        self.edges = [i.replace("mask", "edge") for i in self.gts]
-
-        self.check_pairs(self.images, self.gts, self.bbox_gts, self.edges)
-        
         if self.istraining:
-            self.images = np.array(sorted(self.images))
+            self.edges = [os.path.join(kwargs['edge_root'], fname.replace('.jpg', '.png')) for fname in read_filenames(file_list)]
+            self.check_pairs(self.images, self.gts, self.bbox_gts, self.edges)
+            self.images = np.array(sorted(self.images)) 
             self.gts = np.array(sorted(self.gts))
             self.bbox_gts = np.array(sorted(self.bbox_gts))
             self.edges = np.array(sorted(self.edges))
+            
         else:
             self.images = np.array(sorted(self.images))
             self.gts = np.array(sorted(self.gts))
@@ -534,6 +420,69 @@ class COSwithBox(data.Dataset):
         print("check dataset pass!")
     def __len__(self):
         return self.size
+
+
+class COSwithBoxVal(data.Dataset):
+    def __init__(self, image_root, gt_root, file_list, trainsize, istraining=True, repeat=1, **kwargs):
+        self.trainsize = trainsize
+        self.istraining = istraining
+        self.gts = [os.path.join(gt_root, fname.replace('.jpg', '.png')) for fname in read_filenames(file_list)]
+        self.images = [os.path.join(image_root, fname) for fname in read_filenames(file_list)]
+        if 'box_root' in kwargs:
+            box_root = kwargs['box_root']
+            self.bbox_gts = [os.path.join(box_root, fname.replace('.jpg', '.png')) for fname in read_filenames(file_list)]
+        else:
+            self.bbox_gts = [i.replace("mask", "box") for i in self.gts]
+        self.edges = [i.replace("mask", "edge") for i in self.gts]
+
+        self.check_pairs(self.images, self.gts, self.bbox_gts, self.edges)
+        
+        self.images = np.array(sorted(self.images))
+        self.gts = np.array(sorted(self.gts))
+        self.bbox_gts = np.array(sorted(self.bbox_gts))
+
+        self.img_transform = transforms.Compose([
+            transforms.Resize((self.trainsize, self.trainsize)),
+            transforms.ToTensor(),
+            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        ])
+        self.gt_transform = transforms.Compose([
+            transforms.ToTensor()
+        ])
+        self.size = len(self.images)
+
+    def __getitem__(self, index):
+        image = self.rgb_loader(self.images[index])
+        H, W = image.size
+        name = os.path.basename(self.images[index])
+        gt = self.binary_loader(self.gts[index])
+        bbox = self.rgb_loader(self.bbox_gts[index])
+        bbox = np.array(bbox)
+        bbox = cv2.resize(bbox, (H, W))
+        bbox_image = np.array(bbox) / 255. * np.array(image)
+        bbox_image = Image.fromarray(bbox_image.astype(np.uint8))
+        image = self.img_transform(image)
+        bbox_image = self.img_transform(bbox_image)
+        gt = self.gt_transform(gt)
+        return {'image': image, 'bbox_image': bbox_image, 'gt': gt, 'H': H, 'W': W, 'name': name}
+
+    def rgb_loader(self, path):
+        with open(path, 'rb') as f:
+            img = Image.open(f)
+            return img.convert('RGB')
+
+    def binary_loader(self, path):
+        with open(path, 'rb') as f:
+            img = Image.open(f)
+            return img.convert('L')
+    
+    def check_pairs(self, images, gts, bbox_gts, edges):
+        print("checking dataset pairs")
+        assert len(images) == len(gts) == len(bbox_gts) == len(edges)
+        print("check dataset pass!")
+    def __len__(self):
+        return self.size
+    
 
 def get_dataset(config, dataset_key):
     dataset_config = config['dataset'][dataset_key]

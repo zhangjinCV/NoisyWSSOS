@@ -10,18 +10,18 @@ dataset:
     file_list: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/COD/coreset/coreset20.txt'
     trainsize: 384
     istraining: true
-    batch_size: 24
-    num_workers: 4
+    batch_size: 16
+    num_workers: 3
     shuffle: true
   val:
-    type: 'COSwithBox'
+    type: 'COSwithBoxVal'
     image_root: '/mnt/jixie16t/dataset/COD/CAMO_COD_train/image/'
     gt_root: '/mnt/jixie16t/dataset/COD/CAMO_COD_train/mask/'
     file_list: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/COD/coreset/remaining80.txt'
     trainsize: 384
     istraining: false
-    batch_size: 24
-    num_workers: 6
+    batch_size: 1
+    num_workers: 4
     shuffle: false
     metric: ['MAE', 'IoU']
     pose_process: ['tensor_pose_processing_mask']
@@ -29,7 +29,7 @@ dataset:
     type: 'COSwithBox'
     image_root: ['/mnt/jixie16t/dataset/COD/CAMO_COD_train/image/']
     gt_root: ['/mnt/jixie16t/dataset/COD/CAMO_COD_train/mask/']
-    file_list: ['/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/COD/coreset/remaining90.txt']
+    file_list: ['/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/COD/coreset/remaining80.txt']
     trainsize: 384
     istraining: false
     batch_size: 64
@@ -52,8 +52,8 @@ scheduler:
   params:
     max_lr: 0.0001
     min_lr: 0.0000001
-    warmup_epochs: 0
-    total_epochs: 200
+    warmup_epochs: 5
+    total_epochs: 100
 
 model:
   name: 'ANet'
@@ -61,16 +61,16 @@ model:
     channels: 64
 
 training:
-  epochs: 200
+  epochs: 100
   load: null
-  pretrain: null
-  gpu_id: '0'
+  pretrain: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/PANet/LVIS/epoch_20.pth'
+  gpu_id: '3'
   best_mae: 1.0
   best_epoch: 1
-  val_step: 50
+  val_step: 10
   MASTER_ADDR: 'localhost'
-  MASTER_PORT: '12350'
-  save_path: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/COD/PANet/20%/'
+  MASTER_PORT: '12351'
+  save_path: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/COD/ANet/20%/'
   find_unused_parameters: false
   main_output_index: 4
   losses:

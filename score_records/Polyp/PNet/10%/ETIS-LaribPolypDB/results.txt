@@ -1,0 +1,2 @@
+/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/results/Polyp/PNet/10%/ETIS-LaribPolypDB
+&  0.018  &  0.654  &  0.757  &  0.875
