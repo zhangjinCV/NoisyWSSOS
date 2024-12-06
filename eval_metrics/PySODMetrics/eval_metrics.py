@@ -321,10 +321,10 @@ def process_images(gts, preds, save_path):
     处理多个文件夹中的图像并保存结果
     """
     # 用线程池加速文件处理
-    with ThreadPoolExecutor(max_workers=4) as executor:
+    with ThreadPoolExecutor(max_workers=1) as executor:
         for mask, pred in zip(gts, preds):
             metrics_v1 = GrayscaleMetricRecorderV2(metric_names=GrayscaleMetricRecorderV2.suppoted_metrics)
-            names = os.listdir(mask)
+            names = os.listdir(pred)
             names = [i for i in names if i.endswith(".png")]
             # 收集所有任务，提交给线程池
             tasks = [
@@ -343,17 +343,22 @@ def process_images(gts, preds, save_path):
 
 
 if __name__ == "__main__":
-    gt_path = '/mnt/jixie16t/dataset/DIS5K'
-    pre_path = '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/results/DIS5K/PNet/20%'
-    save_path = "/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/score_records/DIS5K/PNet/20%"
-    names = os.listdir('/mnt/jixie16t/dataset/DIS5K')
-    names.remove('DIS-TR')
-    gts = [os.path.join(gt_path, i, 'gt') for i in names]
-    preds = [os.path.join(pre_path, i) for i in names]
+    gt_path = '/mnt/jixie16t/dataset/Polyp/TrainDataset/mask'
+    pre_path = '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/results/AblationStudy/DifferentSelectionStrategy/topk/Polyp/ANet/remaining80/mask'
+    save_path = "/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/score_records/AblationStudy/DifferentSelectionStrategy/topk/Polyp/ANet/remaining80"
     os.makedirs(save_path, exist_ok=True)
     save_paths = os.path.join(save_path, 'result.txt')
+    process_images([gt_path], [pre_path], save_paths)
 
-    # 开始多线程处理
-    process_images(gts, preds, save_paths)
+    pre_path = '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/results/AblationStudy/DifferentSelectionStrategy/tailk/Polyp/ANet/remaining80/mask'
+    save_path = "/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/score_records/AblationStudy/DifferentSelectionStrategy/tailk/Polyp/ANet/remaining80"
+    os.makedirs(save_path, exist_ok=True)
+    save_paths = os.path.join(save_path, 'result.txt')
+    process_images([gt_path], [pre_path], save_paths)
 
+    pre_path = '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/results/Polyp/ANet/coreset/remaining80/mask'
+    save_path = "/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/score_records/AblationStudy/DifferentSelectionStrategy/ours/Polyp/ANet/remaining80"
+    os.makedirs(save_path, exist_ok=True)
+    save_paths = os.path.join(save_path, 'result.txt')
+    process_images([gt_path], [pre_path], save_paths)
 

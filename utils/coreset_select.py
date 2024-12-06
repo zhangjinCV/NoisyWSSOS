@@ -99,118 +99,80 @@ def TOP_coreset(S_path, alpha, beta, k, path_img, save_path):
     left = int(n * ((1 - alpha) / 2))
 
     sorted_S = sorted(S, key=lambda x: x[1], reverse=False)
-    selected = sorted_S[num+num+num:num+num+num+num]
-    output_file = save_path + str(int(100 * alpha)) + '_4.txt'
+    selected = sorted_S[:num]
+    output_file = save_path + str(int(100 * alpha)) + '.txt'
     with open(output_file, 'w') as f:
         for s in selected:
             f.write(f"{s[0]}\n")
-            
-
-# import torch
-# import torch.nn as nn
-# import torchvision.transforms as transforms
-# from torchvision import models
-# import cv2
-# import numpy as np
-
-# def MDE_coreset(S_path, alpha, beta, k, path_img, save_path):
-#     # Load dataset
-#     with open(S_path, 'r') as f:
-#         S = f.readlines()
-
-#     S = [s.strip().split(':') for s in S]
-#     S = [(s[0], float(s[1])) for s in S]
-#     n = len(S)
-
-#     # Calculate the number of elements to select
-#     nums = [0.2 * alpha, 0.4 * alpha, 0.2 * alpha, 0.2 * alpha]
-#     nums = [int(i * n) for i in nums]
-
-#     # Step 2: Prune hard examples
-#     sorted_S = sorted(S, key=lambda x: x[1], reverse=False)
-#     num_pruned = int(n * (1 - beta))
-#     S_prime = sorted_S[:num_pruned]
-
-#     # Split into k subsets
-#     R = np.array_split(S_prime, k)
-#     S_c = []
-
-#     # Select samples based on maximum distance
-#     for i in range(len(R)):
-#         selected = select_according_max_distance_torch([i[0] for i in R[i]], nums[i], path_img)
-#         S_c.extend(selected)
-
-#     # Save the selected samples to a file
-#     output_file = save_path + str(int(100 * alpha)) + '.txt'
-#     with open(output_file, 'w') as f:
-#         for s in S_c:
-#             f.write(f"{s}\n")
 
 
-# def extract_features_from_image(image_path, model, transform, device):
-#     """
-#     Extract features from an image using a pre-trained model.
-#     """
-#     # Load the image
-#     image = cv2.imread(image_path)
-#     image = cv2.resize(image, (224, 224))  # Resize to 224x224, standard for ImageNet models
-#     image = transform(image).unsqueeze(0).cuda()  # Apply transformations and add batch dimension
 
-#     # Get features from the model (excluding the classification head)
-#     with torch.no_grad():
-#         features = model(image)
-#     return features.squeeze()  # Remove batch dimension
+def Tail_coreset(S_path, alpha, beta, k, path_img, save_path):
+    with open(S_path, 'r') as f:
+        S = f.readlines()
 
+    S = [s.strip().split(':') for s in S]
+    S = [(s[0], float(s[1])) for s in S]
+    n = len(S)
+    
+    # Calculate the number of elements to select
+    num = int(n * alpha)
+    left = int(n * ((1 - alpha) / 2))
 
-# def wasserstein_distance_torch(x, y):
-#     """
-#     Calculate the 1D Wasserstein distance between two distributions.
-#     """
-#     l2 = torch.nn.functional.l1_loss(x, y)
-#     return l2
+    sorted_S = sorted(S, key=lambda x: x[1], reverse=True)
+    selected = sorted_S[:num]
+    output_file = save_path + str(int(100 * alpha)) + '.txt'
+    with open(output_file, 'w') as f:
+        for s in selected:
+            f.write(f"{s[0]}\n")
 
 
-# def select_according_max_distance_torch(R, num, path_img, device='cuda:0'):
-#     """
-#     Select samples from R based on maximum distance in feature space.
-#     """
-#     # Load pre-trained ResNet model
-#     model = models.resnet50(pretrained=True)
-#     model = model.cuda()
-#     model.eval()
 
-#     # Define image transformations for the input
-#     transform = transforms.Compose([
-#         transforms.ToPILImage(),
-#         transforms.ToTensor(),
-#         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # ImageNet normalization
-#     ])
+def Random_coreset(S_path, alpha, beta, k, path_img, save_path):
+    import random
+    with open(S_path, 'r') as f:
+        S = f.readlines()
 
-#     # Initialize selection
-#     selected = [R[0]]  # Select the first sample
-#     selected_features = extract_features_from_image(path_img + R[0], model, transform, device).unsqueeze(0)
-#     R = R[1:]
+    S = [s.strip().split(':') for s in S]
+    S = [(s[0], float(s[1])) for s in S]
+    n = len(S)
+    
+    # Calculate the number of elements to select
+    num = int(n * alpha)
+    left = int(n * ((1 - alpha) / 2))
 
-#     # Iteratively select samples until the desired number is reached
-#     while len(selected) < num:
-#         distances = []
-#         for img in R:
-#             # Extract feature for each image
-#             feature = extract_features_from_image(path_img + img, model, transform, device)
-            
-#             # Calculate the distance between the current feature and the features of the selected samples
-#             dist = torch.min(torch.stack([wasserstein_distance_torch(feature, selected_feat) for selected_feat in selected_features]))
-#             distances.append(dist)
-        
-#         # Find the sample with the maximum distance
-#         max_idx = torch.argmax(torch.tensor(distances)).item()
-#         selected.append(R[max_idx])
-#         # Add the selected sample's feature to the selected_features tensor
-#         selected_features = torch.cat([selected_features, extract_features_from_image(path_img + R[max_idx], model, transform, device).unsqueeze(0)])
-#         # Remove the selected sample from the pool
-#         R = R[:max_idx] + R[max_idx + 1:]
-#         print(f"Selected {len(selected)} samples")
-#     return selected
+    sorted_S = sorted(S, key=lambda x: x[1], reverse=True)
+    selected = random.sample(sorted_S, num)
+    output_file = save_path + str(int(100 * alpha)) + '.txt'
+    with open(output_file, 'w') as f:
+        for s in selected:
+            f.write(f"{s[0]}\n")
+
+
+def CCS_coreset(S_path, alpha, beta, k, path_img, save_path):
+    import random
+    with open(S_path, 'r') as f:
+        S = f.readlines()
+
+    S = [s.strip().split(':') for s in S]
+    S = [(s[0], float(s[1])) for s in S]
+    n = len(S)
+    
+    # Calculate the number of elements to select
+    num = int(n * alpha)
+    ration = [int(0.2 * num), int(0.4 * num), int(0.2 * num), int(0.2 * num)]
+    left = int(n * ((1 - alpha) / 2))
+    sorted_S = sorted(S, key=lambda x: x[1], reverse=False)
+    selected = []
+    i = 0
+    for nu in ration:
+        sos = sorted_S[int(len(sorted_S) * i): int(len(sorted_S) * (i + 0.25))]
+        selected += random.sample(sos, nu)
+        i += 0.25
+    output_file = save_path + str(int(100 * alpha)) + '.txt'
+    with open(output_file, 'w') as f:
+        for s in selected:
+            f.write(f"{s[0]}\n")
 
 
 import torch
@@ -351,6 +313,20 @@ def generate_namelist(path, save_path):
 if __name__ == '__main__':
     images = '/mnt/jixie16t/dataset/COD/CAMO_COD_train/image/'
     boxes = '/mnt/jixie16t/dataset/COD/CAMO_COD_train/box/'
+    CCS_coreset("/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/COD/coreset/coreset_select.txt", 0.2, 0, 4, images + '/', '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/AblationStudy/DifferentSelectionStrategy/ccs/ccs_cod')
+    remaining_set("/mnt/jixie16t/dataset/COD/CAMO_COD_train/namelist.txt", "/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/AblationStudy/DifferentSelectionStrategy/ccs/ccs_cod20.txt", '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/AblationStudy/DifferentSelectionStrategy/ccs/remaining80_cod.txt')
+    
+
+    images = '/mnt/jixie16t/dataset/DIS5K/DIS-TR/im/'
+    CCS_coreset("/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/DIS5K/coreset/coreset_select.txt", 0.2, 0, 4, images + '/', '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/AblationStudy/DifferentSelectionStrategy/ccs/ccs_dis5k')
+
+    remaining_set("/mnt/jixie16t/dataset/DIS5K/DIS-TR/namelist.txt", "/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/AblationStudy/DifferentSelectionStrategy/ccs/ccs_dis5k20.txt", '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/AblationStudy/DifferentSelectionStrategy/ccs/remaining80_dis5k.txt')
+
+    images = '/mnt/jixie16t/dataset/Polyp/TrainDataset/images/'
+    CCS_coreset("/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/Polyp/coreset/coreset_select.txt", 0.2, 0, 4, images + '/', '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/AblationStudy/DifferentSelectionStrategy/ccs/ccs_polyp')
+    
+    remaining_set("/mnt/jixie16t/dataset/Polyp/TrainDataset/namelist.txt", "/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/AblationStudy/DifferentSelectionStrategy/ccs/ccs_polyp20.txt", '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/AblationStudy/DifferentSelectionStrategy/ccs/remaining80_polyp.txt')
+
     # scores = main(glob.glob(os.path.join(images, '*.jpg')), glob.glob(os.path.join(boxes, '*.png')), '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/COD/coreset/coreset_select.txt')
     # MDE_coreset("/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/COD/coreset/coreset_select.txt", 0.2, 0.2, 4, images + '/', '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/COD/coreset/coreset')
     # MDE_coreset("/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/COD/coreset/coreset_select.txt", 0.01, 0.2, 4, images + '/', '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/COD/coreset/coreset')
@@ -390,7 +366,7 @@ if __name__ == '__main__':
     # generate_namelist("/mnt/jixie16t/dataset/Polyp/TestDataset/ETIS-LaribPolypDB/image", '/mnt/jixie16t/dataset/Polyp/TestDataset/ETIS-LaribPolypDB/namelist.txt')
     # generate_namelist("/mnt/jixie16t/dataset/Polyp/TestDataset/CVC-ColonDB/image", '/mnt/jixie16t/dataset/Polyp/TestDataset/CVC-ColonDB/namelist.txt')
     # generate_namelist("/mnt/jixie16t/dataset/Polyp/TestDataset/CVC-300/image", '/mnt/jixie16t/dataset/Polyp/TestDataset/CVC-300/namelist.txt')
-    generate_namelist("/mnt/jixie16t/dataset/COD/CHAMELEON_TestingDataset/image", "/mnt/jixie16t/dataset/COD/CHAMELEON_TestingDataset/namelist.txt")
+    # generate_namelist("/mnt/jixie16t/dataset/COD/CHAMELEON_TestingDataset/image", "/mnt/jixie16t/dataset/COD/CHAMELEON_TestingDataset/namelist.txt")
     # generate_namelist("/mnt/jixie16t/dataset/DIS5K/DIS-TE1/im", "/mnt/jixie16t/dataset/DIS5K/DIS-TE1/namelist.txt")
     # generate_namelist("/mnt/jixie16t/dataset/DIS5K/DIS-TE2/im", "/mnt/jixie16t/dataset/DIS5K/DIS-TE2/namelist.txt")
     # generate_namelist("/mnt/jixie16t/dataset/DIS5K/DIS-TE3/im", "/mnt/jixie16t/dataset/DIS5K/DIS-TE3/namelist.txt")

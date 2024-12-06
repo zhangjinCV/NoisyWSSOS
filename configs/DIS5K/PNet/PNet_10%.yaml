@@ -37,7 +37,7 @@ dataset:
     num_workers: 4
     shuffle: false
     save_path: ['/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/results/DIS5K/PNet/10%/DIS-TE1', '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/results/DIS5K/PNet/10%/DIS-TE2', '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/results/DIS5K/PNet/10%/DIS-TE3', '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/results/DIS5K/PNet/10%/DIS-TE4', '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/results/DIS5K/PNet/10%/DIS-VD']
-    load: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/DIS5K/PNet/10%/model_best.pth'
+    load: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/DIS5K/PNet/10%/epoch_100.pth'
     save_indices: [0]
     save_index_names: ['']
     pose_process: ['tensor_pose_processing_mask']
