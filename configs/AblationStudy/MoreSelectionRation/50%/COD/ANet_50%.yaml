@@ -1,15 +1,15 @@
 seed: 2024
-save_iter: 5
+save_iter: 1
 max_save_num: 2
 
 dataset:
   train1:
     type: 'COSwithBox'
-    image_root: '/mnt/jixie16t/dataset/Polyp/TrainDataset/image/'
-    gt_root: '/mnt/jixie16t/dataset/Polyp/TrainDataset/mask/'
-    edge_root: '/mnt/jixie16t/dataset/Polyp/TrainDataset/edge/'
-    box_root: '/mnt/jixie16t/dataset/Polyp/TrainDataset/box/'
-    file_list: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/AblationStudy/DifferentSelectionStrategy/tailk/tailk_polyp20.txt'
+    image_root: '/mnt/jixie16t/dataset/COD/CAMO_COD_train/image/'
+    gt_root: '/mnt/jixie16t/dataset/COD/CAMO_COD_train/mask/'
+    edge_root: '/mnt/jixie16t/dataset/COD/CAMO_COD_train/edge/'
+    box_root: '/mnt/jixie16t/dataset/COD/CAMO_COD_train/box/'
+    file_list: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/AblationStudy/MoreSelectionRation/50%/COD/coreset50.txt'
     trainsize: 384
     istraining: true
     batch_size: 16
@@ -17,30 +17,30 @@ dataset:
     shuffle: true
   val:
     type: 'COSwithBox'
-    image_root: '/mnt/jixie16t/dataset/Polyp/TrainDataset/image/'
-    gt_root: '/mnt/jixie16t/dataset/Polyp/TrainDataset/mask/'
-    edge_root: '/mnt/jixie16t/dataset/Polyp/TrainDataset/edge/'
-    box_root: '/mnt/jixie16t/dataset/Polyp/TrainDataset/box/'
-    file_list: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/AblationStudy/DifferentSelectionStrategy/tailk/remaining80_polyp.txt'
+    image_root: '/mnt/jixie16t/dataset/COD/CAMO_COD_train/image/'
+    gt_root: '/mnt/jixie16t/dataset/COD/CAMO_COD_train/mask/'
+    edge_root: '/mnt/jixie16t/dataset/COD/CAMO_COD_train/edge/'
+    box_root: '/mnt/jixie16t/dataset/COD/CAMO_COD_train/box/'
+    file_list: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/AblationStudy/MoreSelectionRation/50%/COD/remaining50_cod.txt'
     trainsize: 384
     istraining: false
-    batch_size: 32
-    num_workers: 4
+    batch_size: 64
+    num_workers: 8
     shuffle: false
     metric: ['MAE', 'IoU']
     pose_process: ['tensor_pose_processing_mask']
   test:
     type: 'COSwithBox'
-    image_root: ['/mnt/jixie16t/dataset/Polyp/TrainDataset/image/']
-    gt_root: ['/mnt/jixie16t/dataset/Polyp/TrainDataset/mask/']
-    file_list: ['/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/AblationStudy/DifferentSelectionStrategy/tailk/remaining80_polyp.txt']
+    image_root: ['/mnt/jixie16t/dataset/COD/CAMO_COD_train/image/']
+    gt_root: ['/mnt/jixie16t/dataset/COD/CAMO_COD_train/mask/']
+    file_list: ['/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/AblationStudy/MoreSelectionRation/50%/COD/remaining50_cod.txt']
     trainsize: 384
     istraining: false
-    batch_size: 32
-    num_workers: 6
+    batch_size: 64
+    num_workers: 4
     shuffle: false
-    save_path: ['/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/results/AblationStudy/DifferentSelectionStrategy/tailk/Polyp/ANet/remaining80/']
-    load: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/AblationStudy/DifferentSelectionStrategy/tailk/Polyp/ANet/20%/epoch_100.pth'
+    save_path: ['/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/results/AblationStudy/MoreSelectionRation/COD/ANet/remaining50/']
+    load: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/AblationStudy/MoreSelectionRation/COD/ANet/50%/epoch_100.pth'
     save_indices: [4, 8]
     save_index_names: ['mask', 'edge']
     pose_process: ['tensor_pose_processing_mask', 'tensor_pose_processing_edge']
@@ -67,15 +67,14 @@ model:
 training:
   epochs: 100
   load: null
-  pretrain: null
+  pretrain: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/PANet/LVIS/epoch_20.pth'
   gpu_id: '2'
   best_mae: 1.0
   best_epoch: 1
   val_step: 10
-  is_validation: true
   MASTER_ADDR: 'localhost'
-  MASTER_PORT: '12353'
-  save_path: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/AblationStudy/DifferentSelectionStrategy/tailk/Polyp/ANet/20%/'
+  MASTER_PORT: '12359'
+  save_path: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/AblationStudy/MoreSelectionRation/COD/ANet/50%/'
   find_unused_parameters: false
   main_output_index: 4
   losses:

@@ -9,7 +9,7 @@ dataset:
     gt_root: '/mnt/jixie16t/dataset/Polyp/TrainDataset/mask/'
     edge_root: '/mnt/jixie16t/dataset/Polyp/TrainDataset/edge/'
     box_root: '/mnt/jixie16t/dataset/Polyp/TrainDataset/box/'
-    file_list: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/AblationStudy/DifferentSelectionStrategy/tailk/tailk_polyp20.txt'
+    file_list: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/Polyp/coreset/coreset20.txt'
     trainsize: 384
     istraining: true
     batch_size: 16
@@ -21,7 +21,7 @@ dataset:
     gt_root: '/mnt/jixie16t/dataset/Polyp/TrainDataset/mask/'
     edge_root: '/mnt/jixie16t/dataset/Polyp/TrainDataset/edge/'
     box_root: '/mnt/jixie16t/dataset/Polyp/TrainDataset/box/'
-    file_list: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/AblationStudy/DifferentSelectionStrategy/tailk/remaining80_polyp.txt'
+    file_list: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/Polyp/coreset/remaining80.txt'
     trainsize: 384
     istraining: false
     batch_size: 32
@@ -33,14 +33,14 @@ dataset:
     type: 'COSwithBox'
     image_root: ['/mnt/jixie16t/dataset/Polyp/TrainDataset/image/']
     gt_root: ['/mnt/jixie16t/dataset/Polyp/TrainDataset/mask/']
-    file_list: ['/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/AblationStudy/DifferentSelectionStrategy/tailk/remaining80_polyp.txt']
+    file_list: ['/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/Polyp/coreset/remaining80.txt']
     trainsize: 384
     istraining: false
     batch_size: 32
     num_workers: 6
     shuffle: false
-    save_path: ['/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/results/AblationStudy/DifferentSelectionStrategy/tailk/Polyp/ANet/remaining80/']
-    load: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/AblationStudy/DifferentSelectionStrategy/tailk/Polyp/ANet/20%/epoch_100.pth'
+    save_path: ['/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/results/AblationStudy/DifferentSelectionStrategy/ours/Polyp/ANet/remaining80/']
+    load: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/AblationStudy/DifferentSelectionStrategy/ours/Polyp/ANet/20%/epoch_100.pth'
     save_indices: [4, 8]
     save_index_names: ['mask', 'edge']
     pose_process: ['tensor_pose_processing_mask', 'tensor_pose_processing_edge']
@@ -68,14 +68,14 @@ training:
   epochs: 100
   load: null
   pretrain: null
-  gpu_id: '2'
+  gpu_id: '0'
   best_mae: 1.0
   best_epoch: 1
   val_step: 10
   is_validation: true
   MASTER_ADDR: 'localhost'
-  MASTER_PORT: '12353'
-  save_path: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/AblationStudy/DifferentSelectionStrategy/tailk/Polyp/ANet/20%/'
+  MASTER_PORT: '12351'
+  save_path: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/AblationStudy/DifferentSelectionStrategy/ours/Polyp/ANet/20%/'
   find_unused_parameters: false
   main_output_index: 4
   losses:

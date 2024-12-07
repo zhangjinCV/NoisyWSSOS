@@ -1,0 +1,80 @@
+seed: 2024
+save_iter: 1
+max_save_num: 1
+
+dataset:
+  train1:
+    type: 'COSwithNoBox'
+    image_root: '/mnt/jixie16t/dataset/DIS5K/DIS-TR/im/'
+    gt_root: '/mnt/jixie16t/dataset/DIS5K/DIS-TR/gt/'
+    edge_root: '/mnt/jixie16t/dataset/DIS5K/DIS-TR/edge'
+    file_list: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/DIS5K/coreset/coreset20.txt'
+    trainsize: 1024
+    istraining: true
+    batch_size: 12
+    num_workers: 8
+    shuffle: true
+  val:
+    type: 'COSwithNoBox'
+    image_root: '/mnt/jixie16t/dataset/DIS5K/DIS-VD/im/'
+    gt_root: '/mnt/jixie16t/dataset/DIS5K/DIS-VD/gt/'
+    file_list: '/mnt/jixie16t/dataset/DIS5K/DIS-VD/namelist.txt'
+    trainsize: 1024
+    istraining: false
+    batch_size: 16
+    num_workers: 4
+    shuffle: false
+    pose_process: ['tensor_pose_processing_mask']
+    metric: ['MAE', 'IoU']
+  test:
+    type: 'COSwithNoBox'
+    image_root: ['/mnt/jixie16t/dataset/DIS5K/DIS-TE1/im/', '/mnt/jixie16t/dataset/DIS5K/DIS-TE2/im/', '/mnt/jixie16t/dataset/DIS5K/DIS-TE3/im/', '/mnt/jixie16t/dataset/DIS5K/DIS-TE4/im/', '/mnt/jixie16t/dataset/DIS5K/DIS-VD/im/']
+    gt_root: ['/mnt/jixie16t/dataset/DIS5K/DIS-TE1/gt/', '/mnt/jixie16t/dataset/DIS5K/DIS-TE2/gt/', '/mnt/jixie16t/dataset/DIS5K/DIS-TE3/gt/', '/mnt/jixie16t/dataset/DIS5K/DIS-TE4/gt/', '/mnt/jixie16t/dataset/DIS5K/DIS-VD/gt/']
+    file_list: ['/mnt/jixie16t/dataset/DIS5K/DIS-TE1/namelist.txt', '/mnt/jixie16t/dataset/DIS5K/DIS-TE2/namelist.txt', '/mnt/jixie16t/dataset/DIS5K/DIS-TE3/namelist.txt', '/mnt/jixie16t/dataset/DIS5K/DIS-TE4/namelist.txt', '/mnt/jixie16t/dataset/DIS5K/DIS-VD/namelist.txt']
+    trainsize: 1024
+    istraining: false
+    batch_size: 48
+    num_workers: 8
+    shuffle: false
+    save_path: ['/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/results/AblationStudy/RationofDifferentFullySup/DIS5K/20%/DIS-TE1', '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/results/AblationStudy/RationofDifferentFullySup/DIS5K/20%/DIS-TE2', '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/results/AblationStudy/RationofDifferentFullySup/DIS5K/20%/DIS-TE3', '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/results/AblationStudy/RationofDifferentFullySup/DIS5K/20%/DIS-TE4', '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/results/AblationStudy/RationofDifferentFullySup/DIS5K/20%/DIS-VD']
+    load: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/AblationStudy/RationofDifferentFullySup/DIS5K/20%/epoch_100.pth'
+    save_indices: [0]
+    save_index_names: ['']
+    pose_process: ['tensor_pose_processing_mask']
+
+optimizer:
+  type: 'AdamW'
+  params:
+    lr: 0.0004
+
+scheduler:
+  type: 'LinearCosineAnnealingLR'
+  params:
+    max_lr: 0.0001
+    min_lr: 0.0000001
+    warmup_epochs: 0
+    total_epochs: 100
+
+model:
+  name: 'PGNet'
+
+training:
+  epochs: 100
+  load: null
+  q_epoch: 60
+  pretrain: null
+  gpu_id: '1'
+  best_mae: 1.0
+  best_epoch: 1
+  val_step: 10
+  MASTER_ADDR: 'localhost'
+  MASTER_PORT: '12351'
+  save_path: '/mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/weight/AblationStudy/RationofDifferentFullySup/DIS5K/20%/PGNet/'
+  find_unused_parameters: true
+  main_output_index: 0
+  losses:
+      loss1:
+        type: ['StructureLoss']
+        gt_input: ["gt"]
+        coef: [1]
+      
