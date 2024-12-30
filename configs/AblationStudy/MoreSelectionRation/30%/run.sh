@@ -1,2 +1,0 @@
-python /mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/core/train.py --config /mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/AblationStudy/MoreSelectionRation/30%/COD/ANet_30%.yaml
-python /mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/core/train.py --config /mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/AblationStudy/MoreSelectionRation/30%/DIS5K/ANet_30%.yaml

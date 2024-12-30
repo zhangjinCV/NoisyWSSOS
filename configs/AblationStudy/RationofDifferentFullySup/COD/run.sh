@@ -1,6 +1,0 @@
-python /mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/core/train.py --config /mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/AblationStudy/RationofDifferentFullySup/COD/1%/F_PNet_1%.yaml
-python /mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/core/train.py --config /mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/AblationStudy/RationofDifferentFullySup/COD/5%/F_PNet_5%.yaml
-python /mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/core/train.py --config /mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/AblationStudy/RationofDifferentFullySup/COD/10%/F_PNet_10%.yaml
-python /mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/core/train.py --config /mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/AblationStudy/RationofDifferentFullySup/COD/20%/F_PNet_20%.yaml
-python /mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/core/train.py --config /mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/AblationStudy/RationofDifferentFullySup/COD/30%/F_PNet_30%.yaml
-python /mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/core/train.py --config /mnt/jixie16t/zj/zj/works_in_phd/NoisyCOS/configs/AblationStudy/RationofDifferentFullySup/COD/50%/F_PNet_50%.yaml
